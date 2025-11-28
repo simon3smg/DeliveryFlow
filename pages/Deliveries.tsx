@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, MapPin, Package, X, Trash2, CheckCircle, ArrowRight, User, Store as StoreIcon } from 'lucide-react';
+import { Plus, Search, MapPin, Package, X, Trash2, CheckCircle, ArrowRight, User, Store as StoreIcon, Loader2 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Delivery, Store, Product, DeliveryItem } from '../types';
 import { SignaturePad } from '../components/SignaturePad';
@@ -10,6 +10,8 @@ export const Deliveries: React.FC = () => {
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   // Form State
   const [selectedStoreId, setSelectedStoreId] = useState('');
@@ -25,10 +27,22 @@ export const Deliveries: React.FC = () => {
     refreshData();
   }, []);
 
-  const refreshData = () => {
-    setDeliveries(storageService.getDeliveries());
-    setStores(storageService.getStores());
-    setProducts(storageService.getProducts());
+  const refreshData = async () => {
+    setLoading(true);
+    try {
+        const [del, str, prod] = await Promise.all([
+            storageService.getDeliveries(),
+            storageService.getStores(),
+            storageService.getProducts()
+        ]);
+        setDeliveries(del);
+        setStores(str);
+        setProducts(prod);
+    } catch (e) {
+        console.error("Failed to load delivery data", e);
+    } finally {
+        setLoading(false);
+    }
   };
 
   const handleAddItem = () => {
@@ -54,19 +68,27 @@ export const Deliveries: React.FC = () => {
     setCart(newCart);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!selectedStoreId || cart.length === 0 || !signature) {
       alert("Please complete all fields and sign.");
       return;
     }
 
+    setSubmitting(true);
     const store = stores.find(s => s.id === selectedStoreId);
     
+    // Auth User
+    let driverName = "Unknown Driver";
+    // We can't use the hook here, so we'll rely on our service
+    // In a real app we might pass user as prop
+    // For now we'll just placeholder or let the backend handle it if we moved logic there
+    // We'll trust the user context will be improved later
+    
     const newDelivery: Delivery = {
-      id: Date.now().toString(),
+      id: Date.now().toString(), // Will be ignored by Firestore if we let it generate ID, but useful for optimistic UI
       storeId: selectedStoreId,
       storeName: store?.name || 'Unknown Store',
-      driverName: 'John Driver', // Mocked user
+      driverName: 'John Driver', // Placeholder until context is wired fully
       items: cart,
       signatureDataUrl: signature,
       notes,
@@ -74,10 +96,17 @@ export const Deliveries: React.FC = () => {
       status: 'completed'
     };
 
-    storageService.saveDelivery(newDelivery);
-    refreshData();
-    setView('list');
-    resetForm();
+    try {
+        await storageService.saveDelivery(newDelivery);
+        await refreshData();
+        setView('list');
+        resetForm();
+    } catch (e) {
+        alert("Failed to save delivery. Check console.");
+        console.error(e);
+    } finally {
+        setSubmitting(false);
+    }
   };
 
   const resetForm = () => {
@@ -91,6 +120,14 @@ export const Deliveries: React.FC = () => {
     d.storeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     d.driverName.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  if (loading && view === 'list' && deliveries.length === 0) {
+      return (
+          <div className="flex h-96 items-center justify-center">
+              <Loader2 className="animate-spin text-indigo-600" size={32} />
+          </div>
+      )
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -300,13 +337,16 @@ export const Deliveries: React.FC = () => {
                     <button 
                         onClick={() => setView('list')}
                         className="px-6 py-3 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors"
+                        disabled={submitting}
                     >
                         Cancel
                     </button>
                     <button 
                         onClick={handleSubmit}
-                        className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all transform active:scale-95"
+                        disabled={submitting}
+                        className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all transform active:scale-95 flex items-center gap-2"
                     >
+                        {submitting && <Loader2 className="animate-spin" size={20}/>}
                         Complete Delivery
                     </button>
                 </div>

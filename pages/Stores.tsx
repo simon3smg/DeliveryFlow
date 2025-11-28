@@ -1,47 +1,61 @@
 import React, { useState, useEffect } from 'react';
 import { Store } from '../types';
 import { storageService } from '../services/storageService';
-import { Plus, Trash2, MapPin, Phone, Mail, Store as StoreIcon, X, Edit2 } from 'lucide-react';
+import { Plus, Trash2, MapPin, Phone, Mail, Store as StoreIcon, X, Edit2, Loader2 } from 'lucide-react';
 
 export const Stores: React.FC = () => {
   const [stores, setStores] = useState<Store[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStore, setEditingStore] = useState<Partial<Store>>({});
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setStores(storageService.getStores());
+    loadStores();
   }, []);
 
-  const handleSave = () => {
+  const loadStores = async () => {
+      setLoading(true);
+      try {
+          const data = await storageService.getStores();
+          setStores(data);
+      } catch (e) {
+          console.error(e);
+      } finally {
+          setLoading(false);
+      }
+  };
+
+  const handleSave = async () => {
     if (!editingStore.name || !editingStore.address) {
         alert("Store name and address are required.");
         return;
     }
-
-    let updatedStores: Store[];
-
-    if (editingStore.id) {
-        // Update existing store
-        updatedStores = stores.map(s => 
-            s.id === editingStore.id ? { ...s, ...editingStore } as Store : s
-        );
-    } else {
-        // Create new store
-        const newStore: Store = {
-            id: Date.now().toString(),
-            name: editingStore.name!,
-            address: editingStore.address!,
-            contactPerson: editingStore.contactPerson || '',
-            phone: editingStore.phone || '',
-            email: editingStore.email || ''
-        };
-        updatedStores = [...stores, newStore];
+    
+    setSaving(true);
+    try {
+        if (editingStore.id) {
+            // Update existing store
+            await storageService.updateStore(editingStore as Store);
+        } else {
+            // Create new store
+            await storageService.addStore({
+                name: editingStore.name!,
+                address: editingStore.address!,
+                contactPerson: editingStore.contactPerson || '',
+                phone: editingStore.phone || '',
+                email: editingStore.email || ''
+            });
+        }
+        await loadStores();
+        setIsModalOpen(false);
+        setEditingStore({});
+    } catch (e) {
+        alert("Error saving store");
+        console.error(e);
+    } finally {
+        setSaving(false);
     }
-
-    storageService.saveStores(updatedStores);
-    setStores(updatedStores);
-    setIsModalOpen(false);
-    setEditingStore({});
   };
 
   const handleEdit = (e: React.MouseEvent, store: Store) => {
@@ -51,14 +65,17 @@ export const Stores: React.FC = () => {
       setIsModalOpen(true);
   };
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
     
     if (window.confirm("Are you sure you want to delete this store? This action cannot be undone.")) {
-        const updated = stores.filter(s => s.id !== id);
-        storageService.saveStores(updated);
-        setStores(updated);
+        try {
+            await storageService.deleteStore(id);
+            await loadStores();
+        } catch(e) {
+            alert("Failed to delete store.");
+        }
     }
   };
 
@@ -66,6 +83,10 @@ export const Stores: React.FC = () => {
       setEditingStore({});
       setIsModalOpen(true);
   };
+
+  if (loading) {
+    return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={32}/></div>;
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -84,32 +105,34 @@ export const Stores: React.FC = () => {
           <div key={store.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-100 transition-all group relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-bl-full -mr-10 -mt-10 transition-transform group-hover:scale-110 pointer-events-none"></div>
             
-            <div className="relative z-10">
+            {/* Action Buttons - Absolutely Positioned for Z-index safety */}
+            <div className="absolute top-4 right-4 z-50 flex gap-2">
+                <button 
+                    type="button"
+                    onClick={(e) => handleEdit(e, store)} 
+                    className="bg-white shadow-sm border border-slate-100 text-slate-400 hover:text-indigo-600 hover:border-indigo-200 p-2 transition-all rounded-lg"
+                    title="Edit Store"
+                >
+                    <Edit2 size={16} />
+                </button>
+                <button 
+                    type="button"
+                    onClick={(e) => handleDelete(e, store.id)} 
+                    className="bg-white shadow-sm border border-slate-100 text-slate-400 hover:text-red-500 hover:border-red-200 p-2 transition-all rounded-lg"
+                    title="Delete Store"
+                >
+                    <Trash2 size={16} />
+                </button>
+            </div>
+
+            <div className="relative z-10 mt-2">
                 <div className="flex justify-between items-start mb-6">
                     <div className="w-12 h-12 bg-white rounded-xl shadow-sm border border-slate-100 flex items-center justify-center text-indigo-600">
                         <StoreIcon size={24} />
                     </div>
-                    <div className="flex gap-2 relative z-20">
-                        <button 
-                            type="button"
-                            onClick={(e) => handleEdit(e, store)} 
-                            className="text-slate-400 hover:text-indigo-600 p-2 transition-colors rounded-lg hover:bg-indigo-50"
-                            title="Edit Store"
-                        >
-                            <Edit2 size={18} />
-                        </button>
-                        <button 
-                            type="button"
-                            onClick={(e) => handleDelete(e, store.id)} 
-                            className="text-slate-400 hover:text-red-500 p-2 transition-colors rounded-lg hover:bg-red-50"
-                            title="Delete Store"
-                        >
-                            <Trash2 size={18} />
-                        </button>
-                    </div>
                 </div>
 
-                <h3 className="font-bold text-xl text-slate-800 mb-2 leading-tight">{store.name}</h3>
+                <h3 className="font-bold text-xl text-slate-800 mb-2 leading-tight pr-12">{store.name}</h3>
                 
                 <div className="space-y-3 mt-4">
                     <p className="flex items-start gap-3 text-sm text-slate-600">
@@ -215,7 +238,8 @@ export const Stores: React.FC = () => {
 
               <div className="pt-6 flex gap-3">
                 <button onClick={() => setIsModalOpen(false)} className="flex-1 px-4 py-3 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
-                <button onClick={handleSave} className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all transform active:scale-95">
+                <button onClick={handleSave} disabled={saving} className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all transform active:scale-95 flex items-center justify-center gap-2">
+                    {saving && <Loader2 className="animate-spin" size={18}/>}
                     {editingStore.id ? 'Update Store' : 'Save Store'}
                 </button>
               </div>

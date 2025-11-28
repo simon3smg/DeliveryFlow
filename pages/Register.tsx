@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Truck, Lock, Mail, User, ArrowRight } from 'lucide-react';
+import { Truck, Lock, Mail, User, ArrowRight, Loader2 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 
 export const Register: React.FC = () => {
@@ -12,22 +12,21 @@ export const Register: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-        storageService.register({
+        await storageService.register({
             name,
             email,
             password,
             role
         });
-        // Auto login after register
-        storageService.login(email, password);
         navigate('/');
     } catch (err: any) {
+        console.error(err);
         setError(err.message || 'Registration failed');
         setLoading(false);
     }
@@ -120,7 +119,7 @@ export const Register: React.FC = () => {
               disabled={loading}
               className="w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all transform active:scale-95 flex items-center justify-center gap-2 mt-2"
             >
-               Create Account <ArrowRight size={18} />
+               {loading ? <Loader2 className="animate-spin" size={18}/> : null} Create Account <ArrowRight size={18} />
             </button>
           </form>
 

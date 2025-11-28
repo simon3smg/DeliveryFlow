@@ -34,20 +34,20 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Check Auth
   useEffect(() => {
-    const user = storageService.getCurrentUser();
-    // Allow public access only to login/register, otherwise layout expects user
-    // Note: The App.tsx handles the actual redirection protection. 
-    // This is just to update the UI state.
-    setCurrentUser(user);
-  }, [location]);
+    // Use the listener to get current user correctly
+    const unsubscribe = storageService.onAuthStateChanged((user) => {
+        setCurrentUser(user);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // If we are on login/register pages, don't show the main layout
   if (location.pathname === '/login' || location.pathname === '/register') {
       return <>{children}</>;
   }
 
-  const handleLogout = () => {
-      storageService.logout();
+  const handleLogout = async () => {
+      await storageService.logout();
       navigate('/login');
   }
 

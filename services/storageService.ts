@@ -1,14 +1,53 @@
+import { initializeApp } from 'firebase/app';
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged, 
+  User as FirebaseUser,
+  updateProfile
+} from 'firebase/auth';
+import { 
+  getFirestore, 
+  collection, 
+  getDocs, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  where,
+  setDoc,
+  getDoc
+} from 'firebase/firestore';
 import { Store, Product, Delivery, DriverLocation, User } from '../types';
 
-const STORAGE_KEYS = {
-  STORES: 'deliveryflow_stores',
-  PRODUCTS: 'deliveryflow_products',
-  DELIVERIES: 'deliveryflow_deliveries',
-  USERS: 'deliveryflow_users',
-  CURRENT_USER: 'deliveryflow_current_user',
+// --- FIREBASE CONFIGURATION ---
+// REPLACE THESE VALUES WITH YOUR OWN FIREBASE CONFIG FROM THE CONSOLE
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY_HERE",
+  authDomain: "your-app.firebaseapp.com",
+  projectId: "your-app-id",
+  storageBucket: "your-app.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef"
 };
 
-// Seed Data
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Collection References
+const COLLECTIONS = {
+  STORES: 'stores',
+  PRODUCTS: 'products',
+  DELIVERIES: 'deliveries',
+  USERS: 'users'
+};
+
+// --- INITIAL SEED DATA (For new DBs) ---
 const initialStores: Store[] = [
   { id: 's1', name: 'Downtown Market', address: '123 Market St, San Francisco', contactPerson: 'John Doe', phone: '555-0101', email: 'john@market.com', lat: 37.7941, lng: -122.3956 },
   { id: 's2', name: 'Westside Grocers', address: '456 Divisadero St, San Francisco', contactPerson: 'Jane Smith', phone: '555-0102', email: 'jane@grocers.com', lat: 37.7725, lng: -122.4371 },
@@ -23,32 +62,35 @@ const initialProducts: Product[] = [
   { id: 'p5', name: 'Apple Juice', sku: 'BEV-205', price: 3.75, unit: 'bottle' },
 ];
 
-const initialUsers: User[] = [
-  { id: 'u1', name: 'Admin User', email: 'admin@deliveryflow.com', password: 'password', role: 'admin' },
-  { id: 'u2', name: 'John Driver', email: 'john@deliveryflow.com', password: 'password', role: 'driver' },
-  { id: 'u3', name: 'Jane Delivery', email: 'jane@deliveryflow.com', password: 'password', role: 'driver' },
-];
-
-const initialDeliveries: Delivery[] = [];
-
-// Helper functions
-const get = <T>(key: string, initial: T): T => {
-  const stored = localStorage.getItem(key);
-  if (!stored) {
-    localStorage.setItem(key, JSON.stringify(initial));
-    return initial;
+// Helper to check if DB is empty and seed it
+const seedDatabaseIfNeeded = async () => {
+  try {
+    const productsSnap = await getDocs(collection(db, COLLECTIONS.PRODUCTS));
+    if (productsSnap.empty) {
+      console.log('Seeding Products...');
+      for (const p of initialProducts) {
+        // Use setDoc with specific ID to keep IDs consistent if preferred, 
+        // or addDoc for auto-ID. Here we use the pre-defined IDs for simplicity in the demo.
+        await setDoc(doc(db, COLLECTIONS.PRODUCTS, p.id), p);
+      }
+    }
+    const storesSnap = await getDocs(collection(db, COLLECTIONS.STORES));
+    if (storesSnap.empty) {
+        console.log('Seeding Stores...');
+        for (const s of initialStores) {
+            await setDoc(doc(db, COLLECTIONS.STORES, s.id), s);
+        }
+    }
+  } catch (error) {
+    console.warn("Could not seed database. Check Firebase config/permissions.", error);
   }
-  return JSON.parse(stored);
 };
 
-const set = <T>(key: string, data: T): void => {
-  localStorage.setItem(key, JSON.stringify(data));
-};
-
-// Mock Driver State for Simulation
+// --- MOCK DRIVER STATE (Local Memory Simulation) ---
+// Keeping this local for the demo as high-frequency GPS writes to Firestore might exceed free tier
 let memoryDrivers: DriverLocation[] = [
   {
-    driverId: 'u2',
+    driverId: 'd1',
     driverName: 'John Driver',
     lat: 37.7850,
     lng: -122.4100,
@@ -61,7 +103,7 @@ let memoryDrivers: DriverLocation[] = [
     history: []
   },
   {
-    driverId: 'u3',
+    driverId: 'd2',
     driverName: 'Jane Delivery',
     lat: 37.7600,
     lng: -122.4300,
@@ -76,64 +118,198 @@ let memoryDrivers: DriverLocation[] = [
 ];
 
 export const storageService = {
-  getStores: () => get<Store[]>(STORAGE_KEYS.STORES, initialStores),
-  saveStores: (stores: Store[]) => set(STORAGE_KEYS.STORES, stores),
   
-  getProducts: () => get<Product[]>(STORAGE_KEYS.PRODUCTS, initialProducts),
-  saveProducts: (products: Product[]) => set(STORAGE_KEYS.PRODUCTS, products),
-  
-  getDeliveries: () => get<Delivery[]>(STORAGE_KEYS.DELIVERIES, initialDeliveries),
-  saveDelivery: (delivery: Delivery) => {
-    const current = get<Delivery[]>(STORAGE_KEYS.DELIVERIES, initialDeliveries);
-    const updated = [delivery, ...current];
-    set(STORAGE_KEYS.DELIVERIES, updated);
+  // --- STORES ---
+  getStores: async (): Promise<Store[]> => {
+    try {
+        const snapshot = await getDocs(collection(db, COLLECTIONS.STORES));
+        return snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Store));
+    } catch (e) {
+        // Fallback for demo if firebase fails (e.g. bad config)
+        console.error("Firebase Error (Stores):", e);
+        return [];
+    }
   },
 
-  // Auth & User Management
-  getUsers: () => get<User[]>(STORAGE_KEYS.USERS, initialUsers),
-  
-  register: (user: Omit<User, 'id'>) => {
-    const users = get<User[]>(STORAGE_KEYS.USERS, initialUsers);
-    if (users.find(u => u.email === user.email)) {
-      throw new Error('Email already exists');
+  saveStores: async (stores: Store[]) => {
+    // This function signature from the old local-storage version accepted the whole array.
+    // For Firestore, we typically add/update individually. 
+    // This is a bulk overwrite helper for compatibility, but inefficient for real DBs.
+    // We will stick to individual add/update/delete in the UI components for better practice,
+    // but keep this for legacy calls if any.
+    console.warn("Bulk saveStores called - consider using add/updateStore individual methods");
+  },
+
+  addStore: async (store: Omit<Store, 'id'>) => {
+    const docRef = await addDoc(collection(db, COLLECTIONS.STORES), store);
+    return { ...store, id: docRef.id };
+  },
+
+  updateStore: async (store: Store) => {
+    const storeRef = doc(db, COLLECTIONS.STORES, store.id);
+    const { id, ...data } = store; // Remove ID from data payload
+    await updateDoc(storeRef, data);
+  },
+
+  deleteStore: async (id: string) => {
+    await deleteDoc(doc(db, COLLECTIONS.STORES, id));
+  },
+
+  // --- PRODUCTS ---
+  getProducts: async (): Promise<Product[]> => {
+    try {
+        const snapshot = await getDocs(collection(db, COLLECTIONS.PRODUCTS));
+        return snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Product));
+    } catch (e) {
+        console.error("Firebase Error (Products):", e);
+        return [];
     }
-    const newUser = { ...user, id: Date.now().toString() };
-    set(STORAGE_KEYS.USERS, [...users, newUser]);
+  },
+
+  saveProducts: async (products: Product[]) => {
+      // Bulk overwrite compat
+  },
+
+  addProduct: async (product: Omit<Product, 'id'>) => {
+    const docRef = await addDoc(collection(db, COLLECTIONS.PRODUCTS), product);
+    return { ...product, id: docRef.id };
+  },
+
+  updateProduct: async (product: Product) => {
+    const ref = doc(db, COLLECTIONS.PRODUCTS, product.id);
+    const { id, ...data } = product;
+    await updateDoc(ref, data);
+  },
+
+  deleteProduct: async (id: string) => {
+    await deleteDoc(doc(db, COLLECTIONS.PRODUCTS, id));
+  },
+
+  // --- DELIVERIES ---
+  getDeliveries: async (): Promise<Delivery[]> => {
+    try {
+        const q = query(collection(db, COLLECTIONS.DELIVERIES)); // Can add orderBy here
+        const snapshot = await getDocs(q);
+        // Sort in memory for now
+        const data = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Delivery));
+        return data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    } catch (e) {
+        console.error("Firebase Error (Deliveries):", e);
+        return [];
+    }
+  },
+
+  saveDelivery: async (delivery: Delivery) => {
+    // If ID is numeric timestamp string (from frontend gen), we can let Firestore gen ID or use it
+    const { id, ...data } = delivery;
+    await addDoc(collection(db, COLLECTIONS.DELIVERIES), data);
+  },
+
+  // --- AUTHENTICATION ---
+  // Using Firebase Auth + Firestore 'users' collection for extra profile data
+
+  register: async (userData: Omit<User, 'id'>) => {
+    // 1. Create Auth User
+    const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password || 'password123');
+    const firebaseUser = userCredential.user;
+
+    // 2. Create Firestore Profile
+    const newUser: User = {
+        id: firebaseUser.uid,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        avatar: userData.avatar
+    };
+    
+    await setDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid), newUser);
+    
+    // 3. Update Profile Name
+    await updateProfile(firebaseUser, { displayName: userData.name });
+    
     return newUser;
   },
 
-  login: (email: string, password: string): User => {
-    const users = get<User[]>(STORAGE_KEYS.USERS, initialUsers);
-    const user = users.find(u => u.email === email && u.password === password);
-    if (!user) throw new Error('Invalid credentials');
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(user));
-    return user;
+  login: async (email: string, password: string): Promise<User> => {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const uid = userCredential.user.uid;
+    
+    // Fetch role and extra data from Firestore
+    const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, uid));
+    if (userDoc.exists()) {
+        return userDoc.data() as User;
+    } else {
+        // Fallback if firestore doc missing but auth exists
+        return {
+            id: uid,
+            name: userCredential.user.displayName || 'User',
+            email: email,
+            role: 'driver' // Default
+        };
+    }
   },
 
-  logout: () => {
-    localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
+  logout: async () => {
+    await signOut(auth);
   },
 
-  getCurrentUser: (): User | null => {
-    const stored = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    return stored ? JSON.parse(stored) : null;
+  // Observer for Auth State
+  onAuthStateChanged: (callback: (user: User | null) => void) => {
+    return onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+            try {
+                const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid));
+                if (userDoc.exists()) {
+                    callback(userDoc.data() as User);
+                } else {
+                     callback({
+                        id: firebaseUser.uid,
+                        name: firebaseUser.displayName || 'User',
+                        email: firebaseUser.email || '',
+                        role: 'driver'
+                    });
+                }
+            } catch (e) {
+                console.error("Error fetching user profile", e);
+                callback(null);
+            }
+        } else {
+            callback(null);
+        }
+    });
   },
 
-  updateUser: (updatedUser: User) => {
-    const users = get<User[]>(STORAGE_KEYS.USERS, initialUsers);
-    const newUsers = users.map(u => u.id === updatedUser.id ? updatedUser : u);
-    set(STORAGE_KEYS.USERS, newUsers);
-    localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(updatedUser));
+  updateUser: async (updatedUser: User) => {
+      // We don't update email/password here, just profile data
+      const ref = doc(db, COLLECTIONS.USERS, updatedUser.id);
+      await updateDoc(ref, updatedUser);
   },
 
-  // Driver Location Simulation
+  // --- DRIVER SIMULATION (Hybrid: Remote Stores, Local Simulation) ---
   getDriverLocations: (): DriverLocation[] => {
     return memoryDrivers;
   },
 
-  simulateDriverMovement: () => {
-    // Stores for navigation targets
-    const stores = get<Store[]>(STORAGE_KEYS.STORES, initialStores);
+  simulateDriverMovement: async () => {
+    // Ensure we have stores for navigation targets
+    // In a real app we'd fetch these once or subscribe
+    // For simulation tick, we'll try to get them from cache or fetch lightly
+    // To avoid async complexity in the animation loop, we'll assume stores are loaded 
+    // or just fetch them if the array is empty in the map component.
+    
+    // NOTE: This function calculates new positions.
+    // In a real app, this logic happens on the driver's phone, and they upload coords.
+    
+    // We need stores to know where to drive to.
+    let stores: Store[] = [];
+    try {
+        const snap = await getDocs(collection(db, COLLECTIONS.STORES));
+        stores = snap.docs.map(d => d.data() as Store);
+    } catch {
+        stores = initialStores;
+    }
+    
+    if (stores.length === 0) stores = initialStores;
 
     memoryDrivers = memoryDrivers.map(driver => {
       // Find target store coords
@@ -156,7 +332,6 @@ export const storageService = {
            nextStopId: nextStore.id,
            nextStopName: nextStore.name,
            eta: 'Arrived',
-           // Keep position
          };
       }
 
@@ -186,5 +361,13 @@ export const storageService = {
     });
     
     return memoryDrivers;
+  },
+
+  // Helper to trigger seed
+  init: async () => {
+      await seedDatabaseIfNeeded();
   }
 };
+
+// Initialize once
+storageService.init();

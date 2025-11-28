@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bell, Shield, LogOut, Save, Store, Package } from 'lucide-react';
+import { User, Bell, Shield, LogOut, Save, Store, Package, Loader2 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { User as UserType } from '../types';
 import { useNavigate, Link } from 'react-router-dom';
@@ -10,34 +10,45 @@ export const Settings: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '' });
   const [successMsg, setSuccessMsg] = useState('');
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const currentUser = storageService.getCurrentUser();
-    if (!currentUser) {
-      navigate('/login');
-      return;
-    }
-    setUser(currentUser);
-    setFormData({ name: currentUser.name, email: currentUser.email });
+    // Subscribe to user changes
+    const unsub = storageService.onAuthStateChanged((u) => {
+        if (!u) {
+            navigate('/login');
+            return;
+        }
+        setUser(u);
+        setFormData({ name: u.name, email: u.email });
+    });
+    return () => unsub();
   }, [navigate]);
 
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (user) {
+        setLoading(true);
         const updatedUser = { ...user, ...formData };
-        storageService.updateUser(updatedUser);
-        setUser(updatedUser);
-        setIsEditing(false);
-        setSuccessMsg('Profile updated successfully');
-        setTimeout(() => setSuccessMsg(''), 3000);
+        try {
+            await storageService.updateUser(updatedUser);
+            setUser(updatedUser);
+            setIsEditing(false);
+            setSuccessMsg('Profile updated successfully');
+            setTimeout(() => setSuccessMsg(''), 3000);
+        } catch(e) {
+            alert("Failed to update profile");
+        } finally {
+            setLoading(false);
+        }
     }
   };
 
-  const handleLogout = () => {
-    storageService.logout();
+  const handleLogout = async () => {
+    await storageService.logout();
     navigate('/login');
   };
 
-  if (!user) return null;
+  if (!user) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin"/></div>;
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -57,8 +68,10 @@ export const Settings: React.FC = () => {
                     </h3>
                     <button 
                         onClick={() => isEditing ? handleSaveProfile() : setIsEditing(true)}
-                        className={`text-sm font-bold px-4 py-2 rounded-xl transition-all ${isEditing ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                        className={`text-sm font-bold px-4 py-2 rounded-xl transition-all flex items-center gap-2 ${isEditing ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                        disabled={loading}
                     >
+                        {loading && <Loader2 className="animate-spin" size={14}/>}
                         {isEditing ? 'Save Changes' : 'Edit Profile'}
                     </button>
                 </div>
@@ -83,10 +96,11 @@ export const Settings: React.FC = () => {
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-slate-700">Email Address</label>
                             <input 
-                                disabled={!isEditing}
+                                disabled={true}
                                 value={formData.email}
                                 onChange={(e) => setFormData({...formData, email: e.target.value})}
                                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-60 disabled:cursor-not-allowed"
+                                title="Email cannot be changed directly"
                             />
                         </div>
                     </div>

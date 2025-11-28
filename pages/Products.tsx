@@ -1,44 +1,58 @@
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { storageService } from '../services/storageService';
-import { Plus, Trash2, Package, Search, X, Edit2 } from 'lucide-react';
+import { Plus, Trash2, Package, Search, X, Edit2, Loader2 } from 'lucide-react';
 
 export const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Partial<Product>>({});
   const [filter, setFilter] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    setProducts(storageService.getProducts());
+    loadProducts();
   }, []);
 
-  const handleSave = () => {
-    if (!editingProduct.name || !editingProduct.price) return;
-    
-    let updatedProducts = [...products];
-    
-    if (editingProduct.id) {
-        // Update existing
-        updatedProducts = updatedProducts.map(p => 
-            p.id === editingProduct.id ? { ...p, ...editingProduct } as Product : p
-        );
-    } else {
-        // Create new
-        const product: Product = {
-            id: Date.now().toString(),
-            name: editingProduct.name!,
-            sku: editingProduct.sku || 'N/A',
-            price: Number(editingProduct.price),
-            unit: editingProduct.unit || 'unit'
-        };
-        updatedProducts.push(product);
+  const loadProducts = async () => {
+    setLoading(true);
+    try {
+        const data = await storageService.getProducts();
+        setProducts(data);
+    } catch (e) {
+        console.error(e);
+    } finally {
+        setLoading(false);
     }
+  };
+
+  const handleSave = async () => {
+    if (!editingProduct.name || !editingProduct.price) return;
+    setSaving(true);
     
-    storageService.saveProducts(updatedProducts);
-    setProducts(updatedProducts);
-    setIsModalOpen(false);
-    setEditingProduct({});
+    try {
+        if (editingProduct.id) {
+            // Update existing
+            await storageService.updateProduct(editingProduct as Product);
+        } else {
+            // Create new
+            await storageService.addProduct({
+                name: editingProduct.name!,
+                sku: editingProduct.sku || 'N/A',
+                price: Number(editingProduct.price),
+                unit: editingProduct.unit || 'unit'
+            });
+        }
+        await loadProducts();
+        setIsModalOpen(false);
+        setEditingProduct({});
+    } catch(e) {
+        alert("Failed to save product");
+        console.error(e);
+    } finally {
+        setSaving(false);
+    }
   };
 
   const handleEditClick = (product: Product) => {
@@ -51,18 +65,25 @@ export const Products: React.FC = () => {
       setIsModalOpen(true);
   }
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
     
     if(window.confirm("Are you sure you want to delete this product? This action cannot be undone.")) {
-        const updated = products.filter(p => p.id !== id);
-        storageService.saveProducts(updated);
-        setProducts(updated);
+        try {
+            await storageService.deleteProduct(id);
+            await loadProducts();
+        } catch(e) {
+            alert("Failed to delete product");
+        }
     }
   };
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(filter.toLowerCase()));
+
+  if (loading) {
+      return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={32}/></div>;
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -200,7 +221,8 @@ export const Products: React.FC = () => {
 
               <div className="flex justify-end gap-3 mt-8">
                 <button onClick={() => setIsModalOpen(false)} className="px-6 py-3 text-slate-600 font-medium hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
-                <button onClick={handleSave} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all transform active:scale-95">
+                <button onClick={handleSave} disabled={saving} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all transform active:scale-95 flex items-center gap-2">
+                    {saving && <Loader2 className="animate-spin" size={18}/>}
                     {editingProduct.id ? 'Update Product' : 'Save Product'}
                 </button>
               </div>

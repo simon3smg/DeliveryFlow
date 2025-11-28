@@ -30,20 +30,27 @@ export const LiveMap: React.FC = () => {
 
     mapInstance.current = map;
 
-    // Add Stores to map
-    const stores = storageService.getStores();
-    stores.forEach(store => {
-      if (store.lat && store.lng) {
-        L.marker([store.lat, store.lng], {
-          icon: L.divIcon({
-            className: 'bg-emerald-600 w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white font-bold text-xs',
-            html: 'S',
-            iconSize: [24, 24]
-          })
-        }).bindPopup(`<b>${store.name}</b><br>${store.address}`)
-          .addTo(map);
-      }
-    });
+    // Add Stores to map (Async load)
+    const loadStores = async () => {
+        try {
+            const stores = await storageService.getStores();
+            stores.forEach(store => {
+                if (store.lat && store.lng) {
+                    L.marker([store.lat, store.lng], {
+                    icon: L.divIcon({
+                        className: 'bg-emerald-600 w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white font-bold text-xs',
+                        html: 'S',
+                        iconSize: [24, 24]
+                    })
+                    }).bindPopup(`<b>${store.name}</b><br>${store.address}`)
+                    .addTo(map);
+                }
+            });
+        } catch (e) {
+            console.error("Failed to load map stores", e);
+        }
+    };
+    loadStores();
 
     return () => {
       map.remove();
@@ -53,8 +60,9 @@ export const LiveMap: React.FC = () => {
 
   // Poll for driver updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      const updatedDrivers = storageService.simulateDriverMovement();
+    const interval = setInterval(async () => {
+      // SimulateDriverMovement is now async (might fetch stores)
+      const updatedDrivers = await storageService.simulateDriverMovement();
       setDrivers([...updatedDrivers]); 
       setLastUpdate(Date.now());
     }, 2000); // 2 second updates

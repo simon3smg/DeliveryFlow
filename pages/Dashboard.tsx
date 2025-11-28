@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Truck, Package, DollarSign, Store as StoreIcon, TrendingUp, MoreHorizontal } from 'lucide-react';
+import { Truck, Package, DollarSign, Store as StoreIcon, TrendingUp, MoreHorizontal, Loader2 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Delivery, Store } from '../types';
 import { LiveMap } from '../components/LiveMap';
@@ -8,11 +8,33 @@ import { LiveMap } from '../components/LiveMap';
 export const Dashboard: React.FC = () => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    setDeliveries(storageService.getDeliveries());
-    setStores(storageService.getStores());
+    const fetchData = async () => {
+        try {
+            const [del, str] = await Promise.all([
+                storageService.getDeliveries(),
+                storageService.getStores()
+            ]);
+            setDeliveries(del);
+            setStores(str);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchData();
   }, []);
+
+  if (loading) {
+      return (
+          <div className="flex h-96 items-center justify-center">
+              <Loader2 className="animate-spin text-indigo-600" size={32} />
+          </div>
+      )
+  }
 
   const totalRevenue = deliveries.reduce((acc, d) => {
     return acc + d.items.reduce((sum, item) => sum + (item.quantity * item.priceAtDelivery), 0);

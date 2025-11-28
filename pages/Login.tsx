@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Truck, Lock, Mail, ArrowRight } from 'lucide-react';
+import { Truck, Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 
 export const Login: React.FC = () => {
@@ -10,24 +10,18 @@ export const Login: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      // Simulate network delay
-      setTimeout(() => {
-        try {
-          storageService.login(email, password);
-          navigate('/');
-        } catch (err: any) {
-          setError(err.message || 'Login failed');
-          setLoading(false);
-        }
-      }, 800);
-    } catch (err) {
-      setLoading(false);
+        await storageService.login(email, password);
+        navigate('/');
+    } catch (err: any) {
+        console.error(err);
+        setError("Login failed. Check your credentials.");
+        setLoading(false);
     }
   };
 
@@ -87,7 +81,7 @@ export const Login: React.FC = () => {
               className={`w-full py-3.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all transform active:scale-95 flex items-center justify-center gap-2 ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
             >
               {loading ? (
-                'Signing in...'
+                <><Loader2 className="animate-spin" size={18}/> Signing in...</>
               ) : (
                 <>Sign In <ArrowRight size={18} /></>
               )}
@@ -101,13 +95,6 @@ export const Login: React.FC = () => {
                 Create Account
               </Link>
             </p>
-            <div className="mt-4 pt-4 border-t border-slate-100">
-               <p className="text-xs text-slate-400 mb-2">Demo Credentials:</p>
-               <div className="flex justify-center gap-2 text-xs">
-                 <button onClick={() => {setEmail('admin@deliveryflow.com'); setPassword('password');}} className="bg-slate-100 px-2 py-1 rounded hover:bg-slate-200 text-slate-600">Admin</button>
-                 <button onClick={() => {setEmail('john@deliveryflow.com'); setPassword('password');}} className="bg-slate-100 px-2 py-1 rounded hover:bg-slate-200 text-slate-600">Driver</button>
-               </div>
-            </div>
           </div>
         </div>
       </div>
