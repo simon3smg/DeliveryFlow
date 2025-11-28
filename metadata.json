@@ -1,0 +1,9 @@
+{
+  "name": "DeliveryFlow",
+  "description": "A comprehensive delivery management system for retail. Track deliveries, manage inventory, capture digital signatures, and generate AI-powered monthly reports.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
