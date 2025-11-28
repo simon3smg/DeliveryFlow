@@ -1,19 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, MapPin, Package, X, Trash2, CheckCircle, ArrowRight, User, Store as StoreIcon, Loader2 } from 'lucide-react';
+import { Plus, Search, MapPin, Package, X, Trash2, CheckCircle, ArrowRight, User, Store as StoreIcon, Loader2, Calendar, Edit2 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Delivery, Store, Product, DeliveryItem } from '../types';
 import { SignaturePad } from '../components/SignaturePad';
 
 export const Deliveries: React.FC = () => {
-  const [view, setView] = useState<'list' | 'create'>('list');
+  const [view, setView] = useState<'list' | 'create' | 'edit'>('list');
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  
+  // Filters
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10)); // Default to today
+  
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   // Form State
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedStoreId, setSelectedStoreId] = useState('');
   const [cart, setCart] = useState<DeliveryItem[]>([]);
   const [signature, setSignature] = useState<string | null>(null);
@@ -68,6 +73,16 @@ export const Deliveries: React.FC = () => {
     setCart(newCart);
   };
 
+  const handleEdit = (e: React.MouseEvent, delivery: Delivery) => {
+      e.stopPropagation();
+      setEditingId(delivery.id);
+      setSelectedStoreId(delivery.storeId);
+      setCart(delivery.items);
+      setSignature(delivery.signatureDataUrl);
+      setNotes(delivery.notes || '');
+      setView('edit');
+  };
+
   const handleSubmit = async () => {
     if (!selectedStoreId || cart.length === 0 || !signature) {
       alert("Please complete all fields and sign.");
@@ -77,27 +92,38 @@ export const Deliveries: React.FC = () => {
     setSubmitting(true);
     const store = stores.find(s => s.id === selectedStoreId);
     
-    // Auth User
-    let driverName = "Unknown Driver";
-    // We can't use the hook here, so we'll rely on our service
-    // In a real app we might pass user as prop
-    // For now we'll just placeholder or let the backend handle it if we moved logic there
-    // We'll trust the user context will be improved later
-    
-    const newDelivery: Delivery = {
-      id: Date.now().toString(), // Will be ignored by Firestore if we let it generate ID, but useful for optimistic UI
+    // In edit mode, we want to keep the original timestamp if possible, 
+    // or we might want to update it. For now, let's keep original if editing.
+    // If new, use current time.
+    let timestamp = new Date().toISOString();
+    let id = Date.now().toString();
+
+    if (view === 'edit' && editingId) {
+        const original = deliveries.find(d => d.id === editingId);
+        if (original) {
+            timestamp = original.timestamp;
+            id = original.id;
+        }
+    }
+
+    const payload: Delivery = {
+      id,
       storeId: selectedStoreId,
       storeName: store?.name || 'Unknown Store',
-      driverName: 'John Driver', // Placeholder until context is wired fully
+      driverName: 'John Driver', // This should ideally come from Auth User
       items: cart,
       signatureDataUrl: signature,
       notes,
-      timestamp: new Date().toISOString(),
+      timestamp,
       status: 'completed'
     };
 
     try {
-        await storageService.saveDelivery(newDelivery);
+        if (view === 'edit') {
+            await storageService.updateDelivery(payload);
+        } else {
+            await storageService.saveDelivery(payload);
+        }
         await refreshData();
         setView('list');
         resetForm();
@@ -110,16 +136,22 @@ export const Deliveries: React.FC = () => {
   };
 
   const resetForm = () => {
+    setEditingId(null);
     setSelectedStoreId('');
     setCart([]);
     setSignature(null);
     setNotes('');
   };
 
-  const filteredDeliveries = deliveries.filter(d => 
-    d.storeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    d.driverName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredDeliveries = deliveries.filter(d => {
+    const searchMatch = d.storeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        d.driverName.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // Date filter: Check if timestamp starts with selected YYYY-MM-DD
+    const dateMatch = d.timestamp.startsWith(dateFilter);
+    
+    return searchMatch && dateMatch;
+  });
 
   if (loading && view === 'list' && deliveries.length === 0) {
       return (
@@ -134,21 +166,33 @@ export const Deliveries: React.FC = () => {
       
       {view === 'list' && (
         <>
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-             {/* Search Bar */}
-             <div className="relative w-full sm:w-96">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
-                <input 
-                  type="text" 
-                  placeholder="Search store, driver..." 
-                  className="w-full pl-12 pr-4 py-3 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition-shadow"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+             {/* Filters */}
+             <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto flex-1">
+                 <div className="relative flex-1 max-w-sm">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+                    <input 
+                      type="text" 
+                      placeholder="Search store, driver..." 
+                      className="w-full pl-12 pr-4 py-3 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition-shadow"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                 </div>
+                 
+                 <div className="relative">
+                    <Calendar className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400 pointer-events-none" size={20} />
+                    <input 
+                        type="date"
+                        value={dateFilter}
+                        onChange={(e) => setDateFilter(e.target.value)}
+                        className="pl-12 pr-4 py-3 rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm cursor-pointer text-slate-700 font-medium"
+                    />
+                 </div>
              </div>
 
              <button 
-                onClick={() => setView('create')}
+                onClick={() => { resetForm(); setView('create'); }}
                 className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5"
               >
                 <Plus size={20} /> <span className="font-semibold">New Delivery</span>
@@ -159,11 +203,11 @@ export const Deliveries: React.FC = () => {
              {filteredDeliveries.length === 0 ? (
                <div className="bg-white rounded-2xl p-12 text-center text-slate-400 border border-slate-100 shadow-sm">
                  <Package size={48} className="mx-auto mb-4 text-slate-200" />
-                 <p>No deliveries found matching your search.</p>
+                 <p>No deliveries found for this date.</p>
                </div>
              ) : (
                filteredDeliveries.map((delivery) => (
-                   <div key={delivery.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group cursor-pointer flex flex-col md:flex-row md:items-center justify-between gap-4">
+                   <div key={delivery.id} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all group flex flex-col md:flex-row md:items-center justify-between gap-4">
                      
                      <div className="flex items-start gap-4">
                         <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
@@ -193,13 +237,19 @@ export const Deliveries: React.FC = () => {
                          </div>
                      </div>
 
-                     <div className="flex items-center justify-between md:justify-end gap-4 min-w-[140px]">
+                     <div className="flex items-center justify-between md:justify-end gap-4 min-w-[180px]">
                          <span className="inline-flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
                             <CheckCircle size={14} strokeWidth={2.5} /> Completed
                          </span>
-                         <div className="text-slate-300 group-hover:text-indigo-600 transition-colors">
-                            <ArrowRight size={20} />
-                         </div>
+                         
+                         {/* Edit Button */}
+                         <button 
+                            onClick={(e) => handleEdit(e, delivery)}
+                            className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors"
+                            title="Edit Delivery"
+                         >
+                            <Edit2 size={20} />
+                         </button>
                      </div>
 
                    </div>
@@ -209,12 +259,12 @@ export const Deliveries: React.FC = () => {
         </>
       )}
 
-      {view === 'create' && (
+      {(view === 'create' || view === 'edit') && (
         <div className="max-w-3xl mx-auto">
             <div className="mb-6 flex items-center justify-between">
                 <div>
-                    <h2 className="text-2xl font-bold text-slate-800">New Delivery</h2>
-                    <p className="text-slate-500">Record a new drop-off</p>
+                    <h2 className="text-2xl font-bold text-slate-800">{view === 'edit' ? 'Edit Delivery' : 'New Delivery'}</h2>
+                    <p className="text-slate-500">{view === 'edit' ? 'Update delivery details' : 'Record a new drop-off'}</p>
                 </div>
                 <button onClick={() => setView('list')} className="p-2 hover:bg-slate-100 rounded-full text-slate-500 transition-colors">
                     <X size={24} />
@@ -316,7 +366,22 @@ export const Deliveries: React.FC = () => {
                         {/* Signature */}
                         <div className="space-y-3">
                             <label className="text-sm font-bold text-slate-700 uppercase tracking-wide">3. Signature</label>
-                            <SignaturePad onEnd={setSignature} />
+                            
+                            {signature ? (
+                                <div className="border-2 border-slate-200 rounded-2xl bg-white overflow-hidden h-40 w-full relative group">
+                                    <img src={signature} alt="Signature" className="w-full h-full object-contain" />
+                                    <div className="absolute inset-0 bg-slate-900/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <button 
+                                            onClick={() => setSignature(null)} 
+                                            className="bg-white text-red-500 px-4 py-2 rounded-lg font-bold shadow-lg text-xs"
+                                        >
+                                            Redo Signature
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <SignaturePad onEnd={setSignature} />
+                            )}
                         </div>
 
                         {/* Notes */}
@@ -347,7 +412,7 @@ export const Deliveries: React.FC = () => {
                         className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all transform active:scale-95 flex items-center gap-2"
                     >
                         {submitting && <Loader2 className="animate-spin" size={20}/>}
-                        Complete Delivery
+                        {view === 'edit' ? 'Update Delivery' : 'Complete Delivery'}
                     </button>
                 </div>
             </div>

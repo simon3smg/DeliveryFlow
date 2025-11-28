@@ -13,6 +13,9 @@ import { storageService } from './services/storageService';
 import { User } from './types';
 import { Loader2 } from 'lucide-react';
 
+// 2 Hours in milliseconds
+const INACTIVITY_LIMIT = 2 * 60 * 60 * 1000;
+
 // Async Auth Protection
 const PrivateRoute = ({ children }: { children?: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -47,6 +50,44 @@ const App: React.FC = () => {
   // Initialize Database Connection Probe
   useEffect(() => {
     storageService.init();
+  }, []);
+
+  // Inactivity Logic
+  useEffect(() => {
+    const updateActivity = () => {
+      localStorage.setItem('lastActivity', Date.now().toString());
+    };
+
+    const checkInactivity = () => {
+      const lastActivity = localStorage.getItem('lastActivity');
+      // Only check inactivity if we have a record of it
+      if (lastActivity) {
+        const now = Date.now();
+        if (now - parseInt(lastActivity) > INACTIVITY_LIMIT) {
+           console.log("Session timed out due to inactivity");
+           storageService.logout();
+           // The auth listener in Layout/Routes will handle the redirect
+        }
+      } else {
+        // Initialize if not present
+        updateActivity();
+      }
+    };
+
+    // Set initial activity
+    updateActivity();
+
+    // Listeners for user interaction
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'click'];
+    events.forEach(event => window.addEventListener(event, updateActivity));
+
+    // Check every minute
+    const intervalId = setInterval(checkInactivity, 60000); 
+
+    return () => {
+      events.forEach(event => window.removeEventListener(event, updateActivity));
+      clearInterval(intervalId);
+    };
   }, []);
 
   return (

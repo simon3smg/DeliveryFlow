@@ -13,7 +13,8 @@ import {
   LogOut,
   Settings,
   User,
-  AlertTriangle
+  Wifi,
+  WifiOff
 } from 'lucide-react';
 import { storageService, isFirebaseConfigured } from '../services/storageService';
 import { User as UserType } from '../types';
@@ -25,6 +26,7 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const [isOnline, setIsOnline] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -33,13 +35,28 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     setIsSidebarOpen(false);
   }, [location]);
 
-  // Check Auth
+  // Check Dark Mode Preference on Mount
   useEffect(() => {
+    const isDark = localStorage.getItem('darkMode') === 'true';
+    if (isDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  // Check Auth & Connection Status
+  useEffect(() => {
+    // Check connection status initially and on route changes
+    const checkStatus = () => setIsOnline(storageService.isUsingFirebase());
+    checkStatus();
+    
     const unsubscribe = storageService.onAuthStateChanged((user) => {
         setCurrentUser(user);
+        checkStatus(); // Re-check status when auth changes
     });
     return () => unsubscribe();
-  }, []);
+  }, [location]);
 
   // If we are on login/register pages, don't show the main layout
   if (location.pathname === '/login' || location.pathname === '/register') {
@@ -66,12 +83,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50">
+    <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       
       {/* Sidebar */}
       <aside 
         className={`
-          fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 no-print flex flex-col shadow-2xl
+          fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 no-print flex flex-col shadow-2xl border-r border-slate-800
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
         `}
       >
@@ -113,11 +130,20 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* User Profile Footer */}
         <div className="p-4 border-t border-slate-800 space-y-4">
-           {/* Removed Demo Mode Banner */}
+           
+           {/* Connection Status Badge */}
+           <div className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 ${isOnline ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+               {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+               <span>{isOnline ? 'Cloud Connected' : 'Offline / Local'}</span>
+           </div>
 
            <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer group">
-             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-sm shadow-inner border border-slate-700">
-                {currentUser?.name?.charAt(0) || <User size={16}/>}
+             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-sm shadow-inner border border-slate-700 overflow-hidden shrink-0">
+                {currentUser?.avatar ? (
+                  <img src={currentUser.avatar} alt="User" className="w-full h-full object-cover" />
+                ) : (
+                  currentUser?.name?.charAt(0) || <User size={16}/>
+                )}
              </div>
              <div className="flex-1 min-w-0">
                <p className="text-sm font-semibold truncate group-hover:text-indigo-400 transition-colors">{currentUser?.name || 'Guest'}</p>
@@ -134,23 +160,27 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         
         {/* Mobile Header */}
-        <div className="md:hidden bg-white border-b border-slate-200 p-4 flex justify-between items-center no-print">
+        <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 flex justify-between items-center no-print">
           <div className="flex items-center gap-3">
-             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 -ml-2 text-slate-600">
+             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 -ml-2 text-slate-600 dark:text-slate-300">
                {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
              </button>
-             <h1 className="font-bold text-lg text-slate-800">{getPageTitle()}</h1>
+             <h1 className="font-bold text-lg text-slate-800 dark:text-white">{getPageTitle()}</h1>
           </div>
-          <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
-            {currentUser?.name?.charAt(0)}
+          <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-200 flex items-center justify-center font-bold text-xs overflow-hidden">
+            {currentUser?.avatar ? (
+              <img src={currentUser.avatar} alt="User" className="w-full h-full object-cover" />
+            ) : (
+              currentUser?.name?.charAt(0)
+            )}
           </div>
         </div>
 
         {/* Desktop Header */}
-        <header className="hidden md:flex bg-white/80 backdrop-blur-md border-b border-slate-200/60 sticky top-0 z-20 px-8 py-4 justify-between items-center no-print">
+        <header className="hidden md:flex bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800 sticky top-0 z-20 px-8 py-4 justify-between items-center no-print transition-colors duration-300">
             <div>
-               <h2 className="text-2xl font-bold text-slate-800">{getPageTitle()}</h2>
-               <p className="text-sm text-slate-500">Overview of your activity</p>
+               <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{getPageTitle()}</h2>
+               <p className="text-sm text-slate-500 dark:text-slate-400">Overview of your activity</p>
             </div>
 
             <div className="flex items-center gap-6">
@@ -159,12 +189,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                    <input 
                       type="text" 
                       placeholder="Search..." 
-                      className="pl-10 pr-4 py-2 rounded-full bg-slate-100 border-none text-sm focus:ring-2 focus:ring-indigo-500 w-64 transition-all"
+                      className="pl-10 pr-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white border-none text-sm focus:ring-2 focus:ring-indigo-500 w-64 transition-all"
                    />
                 </div>
-                <button className="relative p-2 text-slate-400 hover:text-indigo-600 transition-colors">
+                <button className="relative p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
                    <Bell size={20} />
-                   <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
+                   <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
                 </button>
             </div>
         </header>
