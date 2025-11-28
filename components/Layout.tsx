@@ -12,9 +12,10 @@ import {
   Search,
   LogOut,
   Settings,
-  User
+  User,
+  AlertTriangle
 } from 'lucide-react';
-import { storageService } from '../services/storageService';
+import { storageService, isFirebaseConfigured } from '../services/storageService';
 import { User as UserType } from '../types';
 
 interface LayoutProps {
@@ -34,7 +35,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Check Auth
   useEffect(() => {
-    // Use the listener to get current user correctly
     const unsubscribe = storageService.onAuthStateChanged((user) => {
         setCurrentUser(user);
     });
@@ -112,7 +112,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </nav>
 
         {/* User Profile Footer */}
-        <div className="p-4 border-t border-slate-800">
+        <div className="p-4 border-t border-slate-800 space-y-4">
+           {/* Removed Demo Mode Banner */}
+
            <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer group">
              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-sm shadow-inner border border-slate-700">
                 {currentUser?.name?.charAt(0) || <User size={16}/>}

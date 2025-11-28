@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Store } from '../types';
 import { storageService } from '../services/storageService';
-import { Plus, Trash2, MapPin, Phone, Mail, Store as StoreIcon, X, Edit2, Loader2 } from 'lucide-react';
+import { Plus, Trash2, MapPin, Phone, Mail, Store as StoreIcon, X, Edit2, Loader2, AlertTriangle } from 'lucide-react';
 
 export const Stores: React.FC = () => {
   const [stores, setStores] = useState<Store[]>([]);
@@ -9,6 +9,7 @@ export const Stores: React.FC = () => {
   const [editingStore, setEditingStore] = useState<Partial<Store>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [storeToDelete, setStoreToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     loadStores();
@@ -65,17 +66,20 @@ export const Stores: React.FC = () => {
       setIsModalOpen(true);
   };
 
-  const handleDelete = async (e: React.MouseEvent, id: string) => {
+  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    if (window.confirm("Are you sure you want to delete this store? This action cannot be undone.")) {
-        try {
-            await storageService.deleteStore(id);
-            await loadStores();
-        } catch(e) {
-            alert("Failed to delete store.");
-        }
+    setStoreToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!storeToDelete) return;
+    try {
+        await storageService.deleteStore(storeToDelete);
+        await loadStores();
+        setStoreToDelete(null);
+    } catch(e) {
+        alert("Failed to delete store.");
     }
   };
 
@@ -117,7 +121,7 @@ export const Stores: React.FC = () => {
                 </button>
                 <button 
                     type="button"
-                    onClick={(e) => handleDelete(e, store.id)} 
+                    onClick={(e) => handleDeleteClick(e, store.id)} 
                     className="bg-white shadow-sm border border-slate-100 text-slate-400 hover:text-red-500 hover:border-red-200 p-2 transition-all rounded-lg"
                     title="Delete Store"
                 >
@@ -245,6 +249,33 @@ export const Stores: React.FC = () => {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {storeToDelete && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4 animate-in fade-in duration-200">
+            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
+                <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <AlertTriangle size={24} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800">Delete Store?</h3>
+                <p className="text-slate-500 text-sm">Are you sure you want to remove this store? This action cannot be undone and will remove it from future reports.</p>
+                <div className="flex gap-3 pt-4">
+                    <button 
+                        onClick={() => setStoreToDelete(null)}
+                        className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={confirmDelete}
+                        className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors shadow-lg shadow-red-200"
+                    >
+                        Delete
+                    </button>
+                </div>
+            </div>
         </div>
       )}
     </div>

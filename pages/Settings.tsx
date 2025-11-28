@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Bell, Shield, LogOut, Save, Store, Package, Loader2 } from 'lucide-react';
+import { User, Bell, Shield, LogOut, Store, Package, Loader2 } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { User as UserType } from '../types';
 import { useNavigate, Link } from 'react-router-dom';

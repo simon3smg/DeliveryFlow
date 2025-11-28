@@ -43,6 +43,12 @@ const PrivateRoute = ({ children }: { children?: React.ReactNode }) => {
 };
 
 const App: React.FC = () => {
+  
+  // Initialize Database Connection Probe
+  useEffect(() => {
+    storageService.init();
+  }, []);
+
   return (
     <Router>
       <Layout>

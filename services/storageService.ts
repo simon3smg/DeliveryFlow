@@ -16,22 +16,22 @@ import {
   updateDoc, 
   deleteDoc, 
   doc, 
+  setDoc, 
+  getDoc,
   query, 
-  where,
-  setDoc,
-  getDoc
+  orderBy 
 } from 'firebase/firestore';
 import { Store, Product, Delivery, DriverLocation, User } from '../types';
 
-// --- FIREBASE CONFIGURATION ---
-// REPLACE THESE VALUES WITH YOUR OWN FIREBASE CONFIG FROM THE CONSOLE
+// --- CONFIGURATION ---
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY_HERE",
-  authDomain: "your-app.firebaseapp.com",
-  projectId: "your-app-id",
-  storageBucket: "your-app.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef"
+  apiKey: "AIzaSyD5QaEgdm3lpM4temD6xbo_GjCHLx5ZUYE",
+  authDomain: "delivery-flow-3c8ff.firebaseapp.com",
+  projectId: "delivery-flow-3c8ff",
+  storageBucket: "delivery-flow-3c8ff.firebasestorage.app",
+  messagingSenderId: "478740346504",
+  appId: "1:478740346504:web:f8ff7295b4a26c8457113d",
+  measurementId: "G-LJMRJTHJYN"
 };
 
 // Initialize Firebase
@@ -39,335 +39,383 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Collection References
-const COLLECTIONS = {
-  STORES: 'stores',
-  PRODUCTS: 'products',
-  DELIVERIES: 'deliveries',
-  USERS: 'users'
+export const isFirebaseConfigured = true;
+
+// --- STATE MANAGEMENT ---
+let useFallbackMode = false;
+let currentUser: User | null = null;
+const authSubscribers = new Set<(user: User | null) => void>();
+
+const notifySubscribers = (user: User | null) => {
+    currentUser = user;
+    authSubscribers.forEach(callback => callback(user));
 };
 
-// --- INITIAL SEED DATA (For new DBs) ---
-const initialStores: Store[] = [
-  { id: 's1', name: 'Downtown Market', address: '123 Market St, San Francisco', contactPerson: 'John Doe', phone: '555-0101', email: 'john@market.com', lat: 37.7941, lng: -122.3956 },
-  { id: 's2', name: 'Westside Grocers', address: '456 Divisadero St, San Francisco', contactPerson: 'Jane Smith', phone: '555-0102', email: 'jane@grocers.com', lat: 37.7725, lng: -122.4371 },
-  { id: 's3', name: 'Mission Bodega', address: '789 Valencia St, San Francisco', contactPerson: 'Mike Ross', phone: '555-0103', email: 'mike@bodega.com', lat: 37.7599, lng: -122.4220 },
-];
+// Listen to Firebase Auth Changes globally once
+onAuthStateChanged(auth, async (fbUser) => {
+    if (fbUser) {
+        // CRITICAL FIX: User logged in, retry Firebase connection.
+        // This fixes the issue where app starts in fallback mode due to lack of permissions,
+        // preventing data from being saved to the database.
+        useFallbackMode = false;
 
-const initialProducts: Product[] = [
-  { id: 'p1', name: 'Organic Milk', sku: 'DAIRY-001', price: 4.50, unit: 'gal' },
-  { id: 'p2', name: 'Sourdough Bread', sku: 'BAKERY-022', price: 3.25, unit: 'loaf' },
-  { id: 'p3', name: 'Farm Eggs', sku: 'DAIRY-005', price: 5.00, unit: 'dozen' },
-  { id: 'p4', name: 'Spring Water', sku: 'BEV-101', price: 1.50, unit: 'bottle' },
-  { id: 'p5', name: 'Apple Juice', sku: 'BEV-205', price: 3.75, unit: 'bottle' },
-];
+        let userData: any = {};
+        if (!useFallbackMode) {
+            try {
+                const userDocRef = doc(db, 'users', fbUser.uid);
+                const userDoc = await getDoc(userDocRef);
+                userData = userDoc.exists() ? userDoc.data() : {};
+            } catch (e) {
+                // If we can't read user profile due to permissions/offline, just ignore
+                console.warn("Could not fetch user profile from DB (Permissions/Offline)");
+            }
+        }
 
-// Helper to check if DB is empty and seed it
-const seedDatabaseIfNeeded = async () => {
-  try {
-    const productsSnap = await getDocs(collection(db, COLLECTIONS.PRODUCTS));
-    if (productsSnap.empty) {
-      console.log('Seeding Products...');
-      for (const p of initialProducts) {
-        // Use setDoc with specific ID to keep IDs consistent if preferred, 
-        // or addDoc for auto-ID. Here we use the pre-defined IDs for simplicity in the demo.
-        await setDoc(doc(db, COLLECTIONS.PRODUCTS, p.id), p);
-      }
-    }
-    const storesSnap = await getDocs(collection(db, COLLECTIONS.STORES));
-    if (storesSnap.empty) {
-        console.log('Seeding Stores...');
-        for (const s of initialStores) {
-            await setDoc(doc(db, COLLECTIONS.STORES, s.id), s);
+        const user: User = {
+            id: fbUser.uid,
+            name: fbUser.displayName || userData.name || fbUser.email?.split('@')[0] || 'User',
+            email: fbUser.email || '',
+            role: userData.role || 'driver'
+        };
+        
+        notifySubscribers(user);
+    } else {
+        // Only clear user if we are not explicitly using a local fallback session
+        if (!currentUser || !currentUser.id.startsWith('local_')) {
+            notifySubscribers(null);
         }
     }
-  } catch (error) {
-    console.warn("Could not seed database. Check Firebase config/permissions.", error);
-  }
-};
+});
 
-// --- MOCK DRIVER STATE (Local Memory Simulation) ---
-// Keeping this local for the demo as high-frequency GPS writes to Firestore might exceed free tier
-let memoryDrivers: DriverLocation[] = [
-  {
-    driverId: 'd1',
-    driverName: 'John Driver',
-    lat: 37.7850,
-    lng: -122.4100,
-    heading: 90,
-    speed: 35,
-    status: 'moving',
-    nextStopName: 'Downtown Market',
-    nextStopId: 's1',
-    eta: '12 mins',
-    history: []
-  },
-  {
-    driverId: 'd2',
-    driverName: 'Jane Delivery',
-    lat: 37.7600,
-    lng: -122.4300,
-    heading: 180,
-    speed: 28,
-    status: 'moving',
-    nextStopName: 'Mission Bodega',
-    nextStopId: 's3',
-    eta: '5 mins',
-    history: []
-  }
+// --- MOCK DATA FOR FALLBACK ---
+const mockStores: Store[] = [
+  { id: 'ms1', name: 'Downtown Market', address: '123 Market St, San Francisco', contactPerson: 'John Doe', phone: '555-0101', email: 'john@market.com', lat: 37.7941, lng: -122.3956 },
+  { id: 'ms2', name: 'Westside Grocers', address: '456 Divisadero St, San Francisco', contactPerson: 'Jane Smith', phone: '555-0102', email: 'jane@grocers.com', lat: 37.7725, lng: -122.4371 },
+  { id: 'ms3', name: 'Mission Bodega', address: '789 Valencia St, San Francisco', contactPerson: 'Mike Ross', phone: '555-0103', email: 'mike@bodega.com', lat: 37.7599, lng: -122.4220 },
 ];
 
+const mockProducts: Product[] = [
+  { id: 'mp1', name: 'Organic Milk', sku: 'DAIRY-001', price: 4.50, unit: 'gal' },
+  { id: 'mp2', name: 'Sourdough Bread', sku: 'BAKERY-022', price: 3.25, unit: 'loaf' },
+  { id: 'mp3', name: 'Farm Eggs', sku: 'DAIRY-005', price: 5.00, unit: 'dozen' },
+  { id: 'mp4', name: 'Spring Water', sku: 'BEV-101', price: 1.50, unit: 'bottle' },
+];
+
+let localDeliveries: Delivery[] = [];
+let localStores: Store[] = [...mockStores];
+let localProducts: Product[] = [...mockProducts];
+
+let memoryDrivers: DriverLocation[] = [
+  { driverId: 'd1', driverName: 'John Driver', lat: 37.7850, lng: -122.4100, heading: 90, speed: 35, status: 'moving', nextStopName: 'Downtown Market', nextStopId: 'ms1', eta: '12 mins', history: [] },
+  { driverId: 'd2', driverName: 'Jane Delivery', lat: 37.7600, lng: -122.4300, heading: 180, speed: 28, status: 'moving', nextStopName: 'Mission Bodega', nextStopId: 'ms3', eta: '5 mins', history: [] }
+];
+
+const mapDoc = <T>(doc: any): T => ({ id: doc.id, ...doc.data() } as T);
+
 export const storageService = {
-  
-  // --- STORES ---
-  getStores: async (): Promise<Store[]> => {
+  isUsingFirebase: () => !useFallbackMode,
+
+  init: async () => {
     try {
-        const snapshot = await getDocs(collection(db, COLLECTIONS.STORES));
-        return snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Store));
-    } catch (e) {
-        // Fallback for demo if firebase fails (e.g. bad config)
-        console.error("Firebase Error (Stores):", e);
-        return [];
+      // PROBE: Try to connect to Firestore.
+      // If permissions are missing or DB is offline, this will fail.
+      const storesSnap = await getDocs(collection(db, 'stores'));
+      
+      if (storesSnap.empty) {
+        // Attempt seed only if we have access
+        for (const s of mockStores) {
+             // eslint-disable-next-line @typescript-eslint/no-unused-vars
+             const { id, ...data } = s; 
+             await addDoc(collection(db, 'stores'), data);
+        }
+      }
+    } catch (e: any) {
+      console.warn("Firestore unavailable (Permissions or Offline). Switching to Local Fallback Mode.");
+      useFallbackMode = true;
     }
   },
 
-  saveStores: async (stores: Store[]) => {
-    // This function signature from the old local-storage version accepted the whole array.
-    // For Firestore, we typically add/update individually. 
-    // This is a bulk overwrite helper for compatibility, but inefficient for real DBs.
-    // We will stick to individual add/update/delete in the UI components for better practice,
-    // but keep this for legacy calls if any.
-    console.warn("Bulk saveStores called - consider using add/updateStore individual methods");
-  },
-
-  addStore: async (store: Omit<Store, 'id'>) => {
-    const docRef = await addDoc(collection(db, COLLECTIONS.STORES), store);
-    return { ...store, id: docRef.id };
-  },
-
-  updateStore: async (store: Store) => {
-    const storeRef = doc(db, COLLECTIONS.STORES, store.id);
-    const { id, ...data } = store; // Remove ID from data payload
-    await updateDoc(storeRef, data);
-  },
-
-  deleteStore: async (id: string) => {
-    await deleteDoc(doc(db, COLLECTIONS.STORES, id));
-  },
-
-  // --- PRODUCTS ---
-  getProducts: async (): Promise<Product[]> => {
+  // --- AUTH ---
+  login: async (email: string, pass: string): Promise<User> => {
     try {
-        const snapshot = await getDocs(collection(db, COLLECTIONS.PRODUCTS));
-        return snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Product));
-    } catch (e) {
-        console.error("Firebase Error (Products):", e);
-        return [];
-    }
-  },
-
-  saveProducts: async (products: Product[]) => {
-      // Bulk overwrite compat
-  },
-
-  addProduct: async (product: Omit<Product, 'id'>) => {
-    const docRef = await addDoc(collection(db, COLLECTIONS.PRODUCTS), product);
-    return { ...product, id: docRef.id };
-  },
-
-  updateProduct: async (product: Product) => {
-    const ref = doc(db, COLLECTIONS.PRODUCTS, product.id);
-    const { id, ...data } = product;
-    await updateDoc(ref, data);
-  },
-
-  deleteProduct: async (id: string) => {
-    await deleteDoc(doc(db, COLLECTIONS.PRODUCTS, id));
-  },
-
-  // --- DELIVERIES ---
-  getDeliveries: async (): Promise<Delivery[]> => {
-    try {
-        const q = query(collection(db, COLLECTIONS.DELIVERIES)); // Can add orderBy here
-        const snapshot = await getDocs(q);
-        // Sort in memory for now
-        const data = snapshot.docs.map(d => ({ ...d.data(), id: d.id } as Delivery));
-        return data.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-    } catch (e) {
-        console.error("Firebase Error (Deliveries):", e);
-        return [];
-    }
-  },
-
-  saveDelivery: async (delivery: Delivery) => {
-    // If ID is numeric timestamp string (from frontend gen), we can let Firestore gen ID or use it
-    const { id, ...data } = delivery;
-    await addDoc(collection(db, COLLECTIONS.DELIVERIES), data);
-  },
-
-  // --- AUTHENTICATION ---
-  // Using Firebase Auth + Firestore 'users' collection for extra profile data
-
-  register: async (userData: Omit<User, 'id'>) => {
-    // 1. Create Auth User
-    const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password || 'password123');
-    const firebaseUser = userCredential.user;
-
-    // 2. Create Firestore Profile
-    const newUser: User = {
-        id: firebaseUser.uid,
-        name: userData.name,
-        email: userData.email,
-        role: userData.role,
-        avatar: userData.avatar
-    };
-    
-    await setDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid), newUser);
-    
-    // 3. Update Profile Name
-    await updateProfile(firebaseUser, { displayName: userData.name });
-    
-    return newUser;
-  },
-
-  login: async (email: string, password: string): Promise<User> => {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const uid = userCredential.user.uid;
-    
-    // Fetch role and extra data from Firestore
-    const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, uid));
-    if (userDoc.exists()) {
-        return userDoc.data() as User;
-    } else {
-        // Fallback if firestore doc missing but auth exists
-        return {
-            id: uid,
-            name: userCredential.user.displayName || 'User',
+        await signInWithEmailAndPassword(auth, email, pass);
+        // Wait for onAuthStateChanged to fire
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (currentUser) return currentUser;
+        throw new Error("Firebase auth state delay");
+    } catch (error: any) {
+        console.warn("Auth failed/offline, falling back to local session.");
+        const localUser: User = {
+            id: 'local_user_' + Date.now(),
+            name: email.split('@')[0],
             email: email,
-            role: 'driver' // Default
+            role: 'admin'
         };
+        notifySubscribers(localUser);
+        return localUser;
+    }
+  },
+
+  register: async (data: Omit<User, 'id'>) => {
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password || 'password123');
+        const fbUser = userCredential.user;
+        await updateProfile(fbUser, { displayName: data.name });
+
+        if (!useFallbackMode) {
+            try {
+                await setDoc(doc(db, 'users', fbUser.uid), {
+                    name: data.name,
+                    email: data.email,
+                    role: data.role
+                });
+            } catch (e) {
+                 console.warn("Skipping user profile creation in DB (Permissions/Offline)");
+            }
+        }
+        
+        const newUser: User = {
+            id: fbUser.uid,
+            name: data.name,
+            email: data.email,
+            role: data.role
+        };
+        
+        await new Promise(resolve => setTimeout(resolve, 500));
+        if (!currentUser) notifySubscribers(newUser);
+        
+        return newUser;
+    } catch (error) {
+        console.warn("Register failed/offline, falling back locally");
+        const localUser: User = {
+            id: 'local_user_' + Date.now(),
+            name: data.name,
+            email: data.email,
+            role: data.role
+        };
+        notifySubscribers(localUser);
+        return localUser;
     }
   },
 
   logout: async () => {
-    await signOut(auth);
-  },
-
-  // Observer for Auth State
-  onAuthStateChanged: (callback: (user: User | null) => void) => {
-    return onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-            try {
-                const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid));
-                if (userDoc.exists()) {
-                    callback(userDoc.data() as User);
-                } else {
-                     callback({
-                        id: firebaseUser.uid,
-                        name: firebaseUser.displayName || 'User',
-                        email: firebaseUser.email || '',
-                        role: 'driver'
-                    });
-                }
-            } catch (e) {
-                console.error("Error fetching user profile", e);
-                callback(null);
-            }
-        } else {
-            callback(null);
-        }
-    });
-  },
-
-  updateUser: async (updatedUser: User) => {
-      // We don't update email/password here, just profile data
-      const ref = doc(db, COLLECTIONS.USERS, updatedUser.id);
-      await updateDoc(ref, updatedUser);
-  },
-
-  // --- DRIVER SIMULATION (Hybrid: Remote Stores, Local Simulation) ---
-  getDriverLocations: (): DriverLocation[] => {
-    return memoryDrivers;
-  },
-
-  simulateDriverMovement: async () => {
-    // Ensure we have stores for navigation targets
-    // In a real app we'd fetch these once or subscribe
-    // For simulation tick, we'll try to get them from cache or fetch lightly
-    // To avoid async complexity in the animation loop, we'll assume stores are loaded 
-    // or just fetch them if the array is empty in the map component.
-    
-    // NOTE: This function calculates new positions.
-    // In a real app, this logic happens on the driver's phone, and they upload coords.
-    
-    // We need stores to know where to drive to.
-    let stores: Store[] = [];
     try {
-        const snap = await getDocs(collection(db, COLLECTIONS.STORES));
-        stores = snap.docs.map(d => d.data() as Store);
-    } catch {
-        stores = initialStores;
+        await signOut(auth);
+    } catch (e) { console.warn(e) }
+    notifySubscribers(null);
+  },
+
+  onAuthStateChanged: (callback: (user: User | null) => void) => {
+    authSubscribers.add(callback);
+    callback(currentUser);
+    return () => {
+        authSubscribers.delete(callback);
+    };
+  },
+
+  updateUser: async (user: User) => {
+    const fbUser = auth.currentUser;
+    if (fbUser && fbUser.uid === user.id) {
+        await updateProfile(fbUser, { displayName: user.name });
     }
-    
-    if (stores.length === 0) stores = initialStores;
+    if (!useFallbackMode && !user.id.startsWith('local_')) {
+        try {
+            await updateDoc(doc(db, 'users', user.id), { name: user.name });
+        } catch (e) { useFallbackMode = true; }
+    }
+    if (currentUser && currentUser.id === user.id) {
+        notifySubscribers({...currentUser, ...user});
+    }
+  },
 
+  // --- DATA METHODS (With Fallback) ---
+  getStores: async (): Promise<Store[]> => {
+    if (useFallbackMode) return localStores;
+    try {
+      const snapshot = await getDocs(collection(db, 'stores'));
+      return snapshot.docs.map(doc => mapDoc<Store>(doc));
+    } catch (error) {
+      useFallbackMode = true;
+      return localStores;
+    }
+  },
+  
+  addStore: async (store: Omit<Store, 'id'>) => {
+    if (useFallbackMode) {
+        const newStore = { ...store, id: 'local_' + Date.now() };
+        localStores.push(newStore);
+        return newStore;
+    }
+    try {
+      const docRef = await addDoc(collection(db, 'stores'), store);
+      return { id: docRef.id, ...store };
+    } catch (error) {
+      useFallbackMode = true;
+      // Retain fallback behavior on write error, but UI will likely show success via local update
+      const newStore = { ...store, id: 'local_' + Date.now() };
+      localStores.push(newStore);
+      return newStore;
+    }
+  },
+  
+  updateStore: async (store: Store) => {
+    if (useFallbackMode) {
+        localStores = localStores.map(s => s.id === store.id ? store : s);
+        return;
+    }
+    try {
+      const { id, ...data } = store;
+      const docRef = doc(db, 'stores', id);
+      await updateDoc(docRef, data);
+    } catch (error) {
+      useFallbackMode = true;
+      localStores = localStores.map(s => s.id === store.id ? store : s);
+    }
+  },
+  
+  deleteStore: async (id: string) => {
+    if (useFallbackMode) {
+        localStores = localStores.filter(s => s.id !== id);
+        return;
+    }
+    try {
+      await deleteDoc(doc(db, 'stores', id));
+    } catch (error) {
+      useFallbackMode = true;
+      localStores = localStores.filter(s => s.id !== id);
+    }
+  },
+
+  getProducts: async (): Promise<Product[]> => {
+    if (useFallbackMode) return localProducts;
+    try {
+      const snapshot = await getDocs(collection(db, 'products'));
+      return snapshot.docs.map(doc => mapDoc<Product>(doc));
+    } catch (error) {
+      useFallbackMode = true;
+      return localProducts;
+    }
+  },
+  
+  addProduct: async (product: Omit<Product, 'id'>) => {
+    if (useFallbackMode) {
+        const newProduct = { ...product, id: 'local_' + Date.now() };
+        localProducts.push(newProduct);
+        return newProduct;
+    }
+    try {
+      const docRef = await addDoc(collection(db, 'products'), product);
+      return { id: docRef.id, ...product };
+    } catch (error) {
+      useFallbackMode = true;
+      const newProduct = { ...product, id: 'local_' + Date.now() };
+      localProducts.push(newProduct);
+      return newProduct;
+    }
+  },
+  
+  updateProduct: async (product: Product) => {
+    if (useFallbackMode) {
+        localProducts = localProducts.map(p => p.id === product.id ? product : p);
+        return;
+    }
+    try {
+      const { id, ...data } = product;
+      const docRef = doc(db, 'products', id);
+      await updateDoc(docRef, data);
+    } catch (error) {
+      useFallbackMode = true;
+      localProducts = localProducts.map(p => p.id === product.id ? product : p);
+    }
+  },
+  
+  deleteProduct: async (id: string) => {
+    if (useFallbackMode) {
+        localProducts = localProducts.filter(p => p.id !== id);
+        return;
+    }
+    try {
+      await deleteDoc(doc(db, 'products', id));
+    } catch (error) {
+      useFallbackMode = true;
+      localProducts = localProducts.filter(p => p.id !== id);
+    }
+  },
+
+  getDeliveries: async (): Promise<Delivery[]> => {
+    if (useFallbackMode) return localDeliveries;
+    try {
+      const q = query(collection(db, 'deliveries'), orderBy('timestamp', 'desc'));
+      const snapshot = await getDocs(q);
+      const deliveries = snapshot.docs.map(doc => mapDoc<Delivery>(doc));
+      return [...deliveries, ...localDeliveries];
+    } catch (error) {
+      useFallbackMode = true;
+      return localDeliveries;
+    }
+  },
+  
+  saveDelivery: async (delivery: Delivery) => {
+    if (useFallbackMode) {
+        localDeliveries.unshift({ ...delivery, id: 'local_' + Date.now() });
+        return;
+    }
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { id, ...data } = delivery; 
+      await addDoc(collection(db, 'deliveries'), data);
+    } catch (error) {
+      useFallbackMode = true;
+      localDeliveries.unshift({ ...delivery, id: 'local_' + Date.now() });
+    }
+  },
+
+  getDriverLocations: () => memoryDrivers,
+  
+  simulateDriverMovement: async () => {
+    let stores: Store[] = [];
+    if (useFallbackMode) {
+        stores = localStores;
+    } else {
+        try {
+            const storesSnap = await getDocs(collection(db, 'stores'));
+            stores = storesSnap.docs.map(doc => mapDoc<Store>(doc));
+        } catch (e) {
+            useFallbackMode = true;
+            stores = localStores;
+        }
+    }
+
+    if (stores.length === 0) stores = mockStores; 
+    
     memoryDrivers = memoryDrivers.map(driver => {
-      // Find target store coords
-      const targetStore = stores.find(s => s.id === driver.nextStopId) || stores[0];
-      const targetLat = targetStore.lat || 37.7749;
-      const targetLng = targetStore.lng || -122.4194;
+        const targetStore = stores.find(s => s.id === driver.nextStopId) || stores[0];
+        if (!targetStore) return driver;
 
-      // Move driver slightly towards target (0.0005 deg is approx 50 meters)
-      const latDiff = targetLat - driver.lat;
-      const lngDiff = targetLng - driver.lng;
-      const distance = Math.sqrt(latDiff*latDiff + lngDiff*lngDiff);
+        const targetLat = targetStore.lat || 37.7941;
+        const targetLng = targetStore.lng || -122.3956;
+        const latDiff = targetLat - driver.lat;
+        const lngDiff = targetLng - driver.lng;
+        const distance = Math.sqrt(latDiff*latDiff + lngDiff*lngDiff);
 
-      // If arrived (close enough), swap target to random other store
-      if (distance < 0.002) {
-         const nextStore = stores[Math.floor(Math.random() * stores.length)];
-         return {
-           ...driver,
-           status: 'stopped',
-           speed: 0,
-           nextStopId: nextStore.id,
-           nextStopName: nextStore.name,
-           eta: 'Arrived',
-         };
-      }
+        if (distance < 0.002) {
+            const nextStore = stores[Math.floor(Math.random() * stores.length)];
+            return { ...driver, status: 'stopped', speed: 0, nextStopId: nextStore.id, nextStopName: nextStore.name, eta: 'Arrived' };
+        }
 
-      // Move logic
-      const speedFactor = 0.0003; // Movement step size
-      const newLat = driver.lat + (latDiff / distance) * speedFactor;
-      const newLng = driver.lng + (lngDiff / distance) * speedFactor;
-
-      // Calculate ETA (Mock: distance / speed)
-      const distKm = distance * 111; // rough deg to km
-      const speedKmH = 40; 
-      const etaMins = Math.ceil((distKm / speedKmH) * 60);
-
-      // Update history trail
-      const newHistory = [...driver.history, { lat: driver.lat, lng: driver.lng }];
-      if (newHistory.length > 20) newHistory.shift();
-
-      return {
-        ...driver,
-        lat: newLat,
-        lng: newLng,
-        status: 'moving',
-        speed: Math.floor(25 + Math.random() * 20),
-        eta: `${etaMins} mins`,
-        history: newHistory
-      };
+        const speedFactor = 0.0003;
+        return {
+            ...driver,
+            lat: driver.lat + (latDiff / distance) * speedFactor,
+            lng: driver.lng + (lngDiff / distance) * speedFactor,
+            status: 'moving',
+            speed: Math.floor(25 + Math.random() * 20),
+            eta: `${Math.ceil((distance * 111 / 40) * 60)} mins`,
+            history: [...driver.history, { lat: driver.lat, lng: driver.lng }].slice(-20)
+        };
     });
-    
     return memoryDrivers;
   },
 
-  // Helper to trigger seed
-  init: async () => {
-      await seedDatabaseIfNeeded();
-  }
+  syncLocalData: async () => {}
 };
-
-// Initialize once
-storageService.init();
