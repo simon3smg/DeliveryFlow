@@ -2,16 +2,20 @@ import { GoogleGenAI } from "@google/genai";
 import { Delivery, Store } from "../types";
 
 const getClient = () => {
-  // Safe environment check
+  // Safe environment check for browser vs node
   let apiKey = '';
   try {
-    apiKey = process.env.API_KEY || '';
+    // Only access process if it is defined to avoid ReferenceError
+    if (typeof process !== 'undefined' && process.env) {
+        apiKey = process.env.API_KEY || '';
+    }
   } catch (e) {
-    // Process not defined in some browser environments
+    // Ignore errors in strict environments
   }
 
   if (!apiKey) {
-    console.warn("API Key not found in environment variables");
+    // In a real deployed app, you might not want to log this warning to avoid noise if the feature is optional
+    // console.warn("API Key not found in environment variables");
     return null;
   }
   return new GoogleGenAI({ apiKey });
@@ -23,7 +27,7 @@ export const generateDeliveryReportInsight = async (
   month: string
 ): Promise<string> => {
   const client = getClient();
-  if (!client) return "API Key is missing. Cannot generate AI insight.";
+  if (!client) return "AI insights are not available (API Key missing).";
 
   const storeNames = stores.map(s => s.name).join(", ");
   const deliveryCount = deliveries.length;
