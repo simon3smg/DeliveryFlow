@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Search, MapPin, Package, X, Trash2, CheckCircle, ArrowRight, User, Store as StoreIcon, Loader2, Calendar, Edit2 } from 'lucide-react';
 import { storageService } from '../services/storageService';
-import { Delivery, Store, Product, DeliveryItem } from '../types';
+import { Delivery, Store, Product, DeliveryItem, User as UserType } from '../types';
 import { SignaturePad } from '../components/SignaturePad';
 
 export const Deliveries: React.FC = () => {
@@ -9,10 +9,15 @@ export const Deliveries: React.FC = () => {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState(new Date().toISOString().slice(0, 10)); // Default to today
+  // Use local date for default value to avoid timezone shifts
+  const [dateFilter, setDateFilter] = useState(() => {
+    const now = new Date();
+    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+  });
   
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -30,6 +35,9 @@ export const Deliveries: React.FC = () => {
 
   useEffect(() => {
     refreshData();
+    // Get current user to attach to new deliveries
+    const unsub = storageService.onAuthStateChanged(u => setCurrentUser(u));
+    return () => unsub();
   }, []);
 
   const refreshData = async () => {
@@ -92,17 +100,18 @@ export const Deliveries: React.FC = () => {
     setSubmitting(true);
     const store = stores.find(s => s.id === selectedStoreId);
     
-    // In edit mode, we want to keep the original timestamp if possible, 
-    // or we might want to update it. For now, let's keep original if editing.
-    // If new, use current time.
+    // Default values for new delivery
     let timestamp = new Date().toISOString();
     let id = Date.now().toString();
+    let driverName = currentUser?.name || 'Unknown Driver';
 
+    // If editing, preserve original values
     if (view === 'edit' && editingId) {
         const original = deliveries.find(d => d.id === editingId);
         if (original) {
             timestamp = original.timestamp;
             id = original.id;
+            driverName = original.driverName;
         }
     }
 
@@ -110,7 +119,7 @@ export const Deliveries: React.FC = () => {
       id,
       storeId: selectedStoreId,
       storeName: store?.name || 'Unknown Store',
-      driverName: 'John Driver', // This should ideally come from Auth User
+      driverName,
       items: cart,
       signatureDataUrl: signature,
       notes,
@@ -202,8 +211,9 @@ export const Deliveries: React.FC = () => {
           <div className="grid gap-4">
              {filteredDeliveries.length === 0 ? (
                <div className="bg-white rounded-2xl p-12 text-center text-slate-400 border border-slate-100 shadow-sm">
-                 <Package size={48} className="mx-auto mb-4 text-slate-200" />
-                 <p>No deliveries found for this date.</p>
+                 <Package size={48} className="mx-auto mb-4 text-slate-200 opacity-50" />
+                 <p className="font-medium">No deliveries found for {new Date(dateFilter).toLocaleDateString()}.</p>
+                 <p className="text-sm mt-1">Try selecting a different date or clearing your search.</p>
                </div>
              ) : (
                filteredDeliveries.map((delivery) => (
@@ -245,7 +255,7 @@ export const Deliveries: React.FC = () => {
                          {/* Edit Button */}
                          <button 
                             onClick={(e) => handleEdit(e, delivery)}
-                            className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors"
+                            className="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
                             title="Edit Delivery"
                          >
                             <Edit2 size={20} />

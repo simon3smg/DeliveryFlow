@@ -2,7 +2,14 @@ import { GoogleGenAI } from "@google/genai";
 import { Delivery, Store } from "../types";
 
 const getClient = () => {
-  const apiKey = process.env.API_KEY;
+  // Safe environment check
+  let apiKey = '';
+  try {
+    apiKey = process.env.API_KEY || '';
+  } catch (e) {
+    // Process not defined in some browser environments
+  }
+
   if (!apiKey) {
     console.warn("API Key not found in environment variables");
     return null;

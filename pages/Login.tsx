@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Truck, Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
+import { Truck, Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { storageService } from '../services/storageService';
 
 export const Login: React.FC = () => {
@@ -20,7 +20,15 @@ export const Login: React.FC = () => {
         navigate('/');
     } catch (err: any) {
         console.error(err);
-        setError("Login failed. Check your credentials.");
+        if (err.code === 'auth/invalid-credential' || err.message.includes('invalid-credential')) {
+            setError("Incorrect email or password. Please try again.");
+        } else if (err.code === 'auth/user-not-found') {
+             setError("No account found with this email. Please register.");
+        } else if (err.code === 'auth/too-many-requests') {
+             setError("Too many failed attempts. Please try again later.");
+        } else {
+            setError("Login failed. Please check your connection.");
+        }
         setLoading(false);
     }
   };
@@ -40,8 +48,9 @@ export const Login: React.FC = () => {
         <div className="p-8">
           <form onSubmit={handleLogin} className="space-y-5">
             {error && (
-              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl border border-red-100 flex items-center justify-center">
-                {error}
+              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl border border-red-100 flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
+                <AlertCircle size={18} className="shrink-0" />
+                <span>{error}</span>
               </div>
             )}
 
