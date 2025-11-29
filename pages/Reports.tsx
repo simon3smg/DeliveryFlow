@@ -37,30 +37,43 @@ const formatDate = (dateStr: string) =>
 const PrintStyles = () => (
   <style>{`
     @media print {
-      @page { size: letter portrait; margin: 0.5in; }
-      body { background-color: white !important; -webkit-print-color-adjust: exact; }
-      #root { height: auto !important; overflow: visible !important; }
+      @page { size: auto; margin: 0mm; }
+      
+      html, body {
+        background-color: white !important;
+        height: auto !important;
+        overflow: visible !important;
+        width: 100% !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
       
       /* Hide Layout Elements */
-      aside, header, .no-print { display: none !important; }
+      aside, header, nav, .no-print { display: none !important; }
       
-      /* Reset Main Container */
-      main {
+      /* Reset layout constraints on root and layout wrappers */
+      #root, #root > div, main, div[class*="overflow-"], div[class*="h-screen"] {
+        display: block !important;
+        height: auto !important;
+        min-height: 0 !important;
+        width: 100% !important;
+        overflow: visible !important;
+        position: static !important;
         margin: 0 !important;
         padding: 0 !important;
-        overflow: visible !important;
-        height: auto !important;
         flex: none !important;
+        transform: none !important;
       }
       
       /* Report Container Overrides */
       .report-modal {
-        position: static !important;
-        background: white !important;
-        padding: 0 !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
         height: auto !important;
-        overflow: visible !important;
-        z-index: auto !important;
+        background: white !important;
+        z-index: 9999 !important;
         display: block !important;
       }
       
@@ -68,13 +81,13 @@ const PrintStyles = () => (
         box-shadow: none !important;
         margin: 0 !important;
         width: 100% !important;
-        min-height: 0 !important;
-        padding: 0 !important;
+        min-height: auto !important;
+        padding: 15mm !important; /* Print margins */
         border: none !important;
       }
       
       /* Ensure text colors print correctly */
-      * { color-adjust: exact; }
+      * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
   `}</style>
 );
@@ -661,17 +674,17 @@ export const Reports: React.FC = () => {
                             <td className="p-5 text-right font-mono font-medium text-amber-600">${store.cashPending.toFixed(2)}</td>
                             <td className="p-5 text-right font-mono font-medium text-blue-600">${store.creditGiven.toFixed(2)}</td>
                             <td className="p-5 text-center">
-                                <div className="flex items-center justify-center gap-2">
+                                <div className="flex flex-col items-stretch gap-2 w-full">
                                     <button 
                                         onClick={() => handleOpenInvoice(store)}
-                                        className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 rounded-lg transition-all text-xs font-bold flex items-center gap-1 shadow-sm"
+                                        className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 rounded-lg transition-all text-xs font-bold flex items-center justify-center gap-1 shadow-sm w-full"
                                         title="View Monthly Invoice"
                                     >
                                         <FileText size={14} /> Invoice
                                     </button>
                                     <button 
                                         onClick={() => handleOpenStatement(store)}
-                                        className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-emerald-600 hover:border-emerald-200 rounded-lg transition-all text-xs font-bold flex items-center gap-1 shadow-sm"
+                                        className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-emerald-600 hover:border-emerald-200 rounded-lg transition-all text-xs font-bold flex items-center justify-center gap-1 shadow-sm w-full"
                                         title="View Account Statement"
                                     >
                                         <CreditCard size={14} /> Statement
@@ -697,3 +710,4 @@ export const Reports: React.FC = () => {
     </div>
   );
 };
+    

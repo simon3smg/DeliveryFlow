@@ -11,7 +11,6 @@ import {
   Bell,
   Search,
   LogOut,
-  Settings,
   User,
   Wifi,
   WifiOff
@@ -85,10 +84,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/stores', label: 'Stores', icon: <StoreIcon size={20} /> },
     { path: '/products', label: 'Products', icon: <Package size={20} /> },
     { path: '/reports', label: 'Reports', icon: <FileText size={20} /> },
-    { path: '/settings', label: 'Settings', icon: <Settings size={20} /> },
   ];
 
   const getPageTitle = () => {
+    if (location.pathname === '/settings') return 'Settings';
     const item = navItems.find(i => i.path === location.pathname);
     return item ? item.label : 'Dashboard';
   };
@@ -148,7 +147,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                <span>{isOnline ? 'Cloud Connected' : 'Offline / Local'}</span>
            </div>
 
-           <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer group">
+           <div 
+             onClick={() => navigate('/settings')}
+             className="flex items-center gap-3 p-3 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer group"
+             title="Go to Settings"
+           >
              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center font-bold text-sm shadow-inner border border-slate-700 overflow-hidden shrink-0">
                 {currentUser?.avatar ? (
                   <img src={currentUser.avatar} alt="User" className="w-full h-full object-cover" />
@@ -160,7 +163,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                <p className="text-sm font-semibold truncate group-hover:text-indigo-400 transition-colors">{currentUser?.name || 'Guest'}</p>
                <p className="text-xs text-slate-500 truncate capitalize">{currentUser?.role || 'Viewer'}</p>
              </div>
-             <button onClick={handleLogout} title="Sign Out">
+             <button 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    handleLogout();
+                }} 
+                title="Sign Out"
+                className="p-1.5 hover:bg-slate-700 rounded-lg transition-colors z-10"
+             >
                  <LogOut size={16} className="text-slate-500 hover:text-white" />
              </button>
            </div>
@@ -178,7 +188,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
              </button>
              <h1 className="font-bold text-lg text-slate-800 dark:text-white">{getPageTitle()}</h1>
           </div>
-          <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-200 flex items-center justify-center font-bold text-xs overflow-hidden">
+          <div 
+            className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-200 flex items-center justify-center font-bold text-xs overflow-hidden cursor-pointer"
+            onClick={() => navigate('/settings')}
+          >
             {currentUser?.avatar ? (
               <img src={currentUser.avatar} alt="User" className="w-full h-full object-cover" />
             ) : (
