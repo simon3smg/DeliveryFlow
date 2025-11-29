@@ -47,16 +47,26 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Check Auth & Connection Status
   useEffect(() => {
-    // Check connection status initially and on route changes
-    const checkStatus = () => setIsOnline(storageService.isUsingFirebase());
-    checkStatus();
+    // Check connection status initially
+    setIsOnline(storageService.isUsingFirebase());
     
+    // Subscribe to Auth Changes
     const unsubscribe = storageService.onAuthStateChanged((user) => {
         setCurrentUser(user);
-        checkStatus(); // Re-check status when auth changes
+        setIsOnline(storageService.isUsingFirebase());
+
+        // Tracking Logic
+        if (user && user.role === 'driver') {
+            storageService.startTracking();
+        } else {
+            storageService.stopTracking();
+        }
     });
-    return () => unsubscribe();
-  }, [location]);
+    return () => {
+        unsubscribe();
+        storageService.stopTracking();
+    };
+  }, []); 
 
   // If we are on login/register pages, don't show the main layout
   if (location.pathname === '/login' || location.pathname === '/register') {
@@ -83,7 +93,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="min-h-screen flex bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+    <div className="w-full min-h-screen flex bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
       
       {/* Sidebar */}
       <aside 
@@ -189,7 +199,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                    <input 
                       type="text" 
                       placeholder="Search..." 
-                      className="pl-10 pr-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white border-none text-sm focus:ring-2 focus:ring-indigo-500 w-64 transition-all"
+                      className="pl-10 pr-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white border-none text-sm focus:ring-2 focus:ring-indigo-500 w-64 md:w-80 lg:w-96 xl:w-[28rem] transition-all"
                    />
                 </div>
                 <button className="relative p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
@@ -200,8 +210,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Scrollable Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
-          <div className="max-w-7xl mx-auto pb-10">
+        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 scroll-smooth">
+          <div className="w-full pb-10 mx-auto">
             {children}
           </div>
         </main>

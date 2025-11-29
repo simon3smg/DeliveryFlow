@@ -43,13 +43,26 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+// Enforce persistence immediately
+setPersistence(auth, browserLocalPersistence).catch(error => {
+  console.error("Failed to enable persistence:", error);
+});
+
 export const isFirebaseConfigured = true;
 
 // --- STATE MANAGEMENT ---
 let currentUser: User | null = null;
+let isAuthReady = false; // Flag to track if Firebase has finished initial load
 const authSubscribers = new Set<(user: User | null) => void>();
 
+// Store local simulations
 let driverSimulationState: Record<string, DriverLocation> = {};
+let lastKnownRealDrivers: DriverLocation[] = [];
+let locationWatchId: number | null = null;
+
+// Edmonton Distribution Center Coordinates
+const BASE_LAT = 53.5706;
+const BASE_LNG = -113.4682;
 
 const notifySubscribers = (user: User | null) => {
     currentUser = user;
@@ -76,18 +89,21 @@ onAuthStateChanged(auth, async (fbUser) => {
             avatar: userData.avatar || ''
         };
         
+        isAuthReady = true;
         notifySubscribers(user);
     } else {
+        isAuthReady = true;
         notifySubscribers(null);
     }
 });
 
 const mapDoc = <T>(doc: any): T => ({ id: doc.id, ...doc.data() } as T);
 
+// Seed Data - Updated to Edmonton
 const seedStores: Partial<Store>[] = [
-  { name: 'Downtown Market', address: '123 Market St, San Francisco', contactPerson: 'John Doe', phone: '555-0101', email: 'john@market.com', lat: 37.7941, lng: -122.3956 },
-  { name: 'Westside Grocers', address: '456 Divisadero St, San Francisco', contactPerson: 'Jane Smith', phone: '555-0102', email: 'jane@grocers.com', lat: 37.7725, lng: -122.4371 },
-  { name: 'Mission Bodega', address: '789 Valencia St, San Francisco', contactPerson: 'Mike Ross', phone: '555-0103', email: 'mike@bodega.com', lat: 37.7599, lng: -122.4220 },
+  { name: 'Edmonton Distribution Ctr', address: '8612 118 Ave NW, Edmonton', contactPerson: 'Manager', phone: '780-555-0100', email: 'dist@edmonton.com', lat: 53.5706, lng: -113.4682 },
+  { name: 'Downtown Market', address: '10200 102 Ave NW, Edmonton', contactPerson: 'John Doe', phone: '780-555-0101', email: 'john@market.com', lat: 53.5437, lng: -113.4975 },
+  { name: 'West Edmonton Mall Store', address: '8882 170 St NW, Edmonton', contactPerson: 'Jane Smith', phone: '780-555-0102', email: 'jane@wem.com', lat: 53.5225, lng: -113.6242 },
 ];
 
 const seedProducts: Partial<Product>[] = [
@@ -116,16 +132,12 @@ export const storageService = {
 
   // --- AUTH ---
   login: async (email: string, pass: string): Promise<User> => {
-    // 1. Set persistence
     await setPersistence(auth, browserLocalPersistence);
-    
-    // 2. Sign in
     const cred = await signInWithEmailAndPassword(auth, email, pass);
     
-    // 3. WAIT for the profile to be loaded by the global listener.
+    // Wait for profile load
     const waitForProfile = async (): Promise<User> => {
         let attempts = 0;
-        // Wait up to 5 seconds for the profile listener to fire
         while (attempts < 50) { 
             if (currentUser && currentUser.id === cred.user.uid) {
                 return currentUser;
@@ -133,7 +145,6 @@ export const storageService = {
             await new Promise(r => setTimeout(r, 100));
             attempts++;
         }
-        
         return { 
             id: cred.user.uid, 
             name: cred.user.displayName || 'Loading...', 
@@ -141,7 +152,6 @@ export const storageService = {
             role: 'driver' 
         };
     };
-
     return waitForProfile();
   },
 
@@ -165,23 +175,24 @@ export const storageService = {
         role: data.role
     };
 
-    // Allow time for propagation
     await new Promise(r => setTimeout(r, 500));
-    
     if (!currentUser || currentUser.id !== newUser.id) {
         notifySubscribers(newUser);
     }
-    
     return newUser;
   },
 
   logout: async () => {
+    storageService.stopTracking();
     await signOut(auth);
   },
 
   onAuthStateChanged: (callback: (user: User | null) => void) => {
     authSubscribers.add(callback);
-    callback(currentUser);
+    // Only fire immediate callback if we are sure of the auth state
+    if (isAuthReady) {
+        callback(currentUser);
+    }
     return () => {
         authSubscribers.delete(callback);
     };
@@ -213,6 +224,74 @@ export const storageService = {
         await updatePassword(fbUser, newPassword);
     } else {
         throw new Error("No user logged in");
+    }
+  },
+
+  // --- LOCATION TRACKING ---
+  startTracking: () => {
+    if (!navigator.geolocation) {
+        console.warn("Geolocation not supported");
+        return;
+    }
+    
+    // Clear existing watch if any
+    if (locationWatchId !== null) return;
+
+    console.log("Starting location tracking...");
+    locationWatchId = navigator.geolocation.watchPosition(
+        (position) => {
+            const { latitude, longitude, heading, speed } = position.coords;
+            storageService.updateDriverLocation(latitude, longitude, heading || 0, speed || 0);
+        },
+        (err) => {
+            console.warn("Location tracking error:", err);
+            // On error, we might be offline or denied. 
+            // If offline, we can't do much but retry. 
+        },
+        {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 10000
+        }
+    );
+  },
+
+  stopTracking: () => {
+    if (locationWatchId !== null) {
+        console.log("Stopping location tracking...");
+        navigator.geolocation.clearWatch(locationWatchId);
+        locationWatchId = null;
+    }
+  },
+
+  updateDriverLocation: async (lat: number, lng: number, heading: number = 0, speed: number = 0) => {
+    if (!currentUser || currentUser.role !== 'driver') return;
+    
+    try {
+      const locationRef = doc(db, 'driver_locations', currentUser.id);
+      const data = {
+        driverId: currentUser.id,
+        driverName: currentUser.name,
+        lat,
+        lng,
+        heading,
+        speed,
+        timestamp: Date.now(),
+        status: (speed && speed > 0.5) ? 'moving' : 'stopped'
+      };
+      
+      await setDoc(locationRef, data, { merge: true });
+      
+      // Update local simulation state so map updates immediately for self
+      driverSimulationState[currentUser.id] = {
+          ...data,
+          status: data.status as any,
+          history: driverSimulationState[currentUser.id]?.history || []
+      };
+
+    } catch (e) {
+      console.warn("Error updating location (offline mode active):", e);
+      // Firebase SDK handles persistence, so this catch mainly catches permission/logic errors
     }
   },
 
@@ -265,7 +344,6 @@ export const storageService = {
   
   saveDelivery: async (delivery: Delivery) => {
     const { id, ...data } = delivery; 
-    // If ID is numeric (mock), let firestore gen new ID, else use existing
     await addDoc(collection(db, 'deliveries'), data);
   },
 
@@ -273,85 +351,115 @@ export const storageService = {
     const { id, ...data } = delivery;
     await updateDoc(doc(db, 'deliveries', id), data);
   },
+  
+  deleteDelivery: async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'deliveries', id));
+    } catch (error) {
+      console.error("Error deleting delivery doc:", id, error);
+      throw error;
+    }
+  },
 
-  // --- DRIVER SIMULATION ---
+  // --- DRIVER SIMULATION & REALTIME ---
   getDriverLocations: () => [],
   
   simulateDriverMovement: async () => {
-    let drivers: User[] = [];
+    // 1. Fetch Real Locations from DB
+    let realDrivers: DriverLocation[] = [];
+    try {
+        const querySnapshot = await getDocs(collection(db, 'driver_locations'));
+        realDrivers = querySnapshot.docs.map(doc => doc.data() as DriverLocation);
+        lastKnownRealDrivers = realDrivers; // Update cache
+    } catch(e) { 
+        console.warn("Using offline driver cache");
+        realDrivers = lastKnownRealDrivers;
+    }
+
+    // 2. Fetch Users to simulate those who don't have real location data
+    let users: User[] = [];
     try {
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('role', '==', 'driver'));
         const snapshot = await getDocs(q);
-        drivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
-        
-        if (currentUser && currentUser.role === 'driver' && !drivers.find(d => d.id === currentUser?.id)) {
-            drivers.push(currentUser);
-        }
-    } catch(e) {
-        console.warn("Failed to fetch drivers", e);
-    }
-    
-    if (drivers.length === 0) return [];
+        users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+    } catch(e) { /* ignore */ }
+
+    if (users.length === 0 && realDrivers.length === 0) return [];
 
     let stores: Store[] = [];
     try {
         stores = await storageService.getStores();
     } catch(e) { /* ignore */ }
     
-    const baseStore = stores.length > 0 ? stores[0] : { lat: 37.7749, lng: -122.4194, name: 'Base' } as Store;
+    // Fallback to Edmonton
+    const baseLat = stores.length > 0 && stores[0].lat ? stores[0].lat : BASE_LAT;
+    const baseLng = stores.length > 0 && stores[0].lng ? stores[0].lng : BASE_LNG;
 
-    const results: DriverLocation[] = drivers.map(driver => {
-        let state = driverSimulationState[driver.id];
+    // 3. Process Simulation for users without real-time data
+    const simulatedDrivers: DriverLocation[] = users
+        .filter(u => !realDrivers.find(rd => rd.driverId === u.id)) // Filter out real drivers
+        .map(driver => {
+            let state = driverSimulationState[driver.id];
 
-        if (!state) {
-            state = {
-                driverId: driver.id,
+            if (!state) {
+                state = {
+                    driverId: driver.id,
+                    driverName: driver.name,
+                    lat: baseLat,
+                    lng: baseLng,
+                    heading: Math.random() * 360,
+                    speed: 0,
+                    status: 'idle',
+                    nextStopName: stores.length > 1 ? stores[1].name : 'Route Start',
+                    eta: 'Calculating...',
+                    history: []
+                };
+            }
+
+            // Move them (Simulation logic)
+            const time = Date.now();
+            const idHash = driver.id.split('').reduce((a,c) => a + c.charCodeAt(0), 0);
+            
+            const speedFactor = 0.0001;
+            const radius = 0.01 + (idHash % 20) * 0.001; 
+            const angle = (time * speedFactor) + (idHash % 100);
+            
+            const newLat = baseLat + Math.sin(angle) * radius;
+            const newLng = baseLng + Math.cos(angle) * radius;
+
+            const dLat = newLat - state.lat;
+            const dLng = newLng - state.lng;
+            const heading = (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
+
+            const newHistory = [...state.history, {lat: newLat, lng: newLng}].slice(-15);
+
+            const newState: DriverLocation = {
+                ...state,
                 driverName: driver.name,
-                lat: baseStore.lat || 37.7749,
-                lng: baseStore.lng || -122.4194,
-                heading: Math.random() * 360,
-                speed: 0,
-                status: 'idle',
-                nextStopName: stores.length > 1 ? stores[1].name : 'Route Start',
-                eta: 'Calculating...',
-                history: []
+                lat: newLat,
+                lng: newLng,
+                heading: heading,
+                speed: Math.floor(20 + (idHash % 30)),
+                status: 'moving',
+                history: newHistory,
+                eta: `${Math.floor(10 + (idHash % 20))} mins`
             };
-        }
 
-        const time = Date.now();
-        const idHash = driver.id.split('').reduce((a,c) => a + c.charCodeAt(0), 0);
-        
-        const speedFactor = 0.0001;
-        const radius = 0.01 + (idHash % 20) * 0.001; 
-        const angle = (time * speedFactor) + (idHash % 100);
-        
-        const newLat = (baseStore.lat || 37.7749) + Math.sin(angle) * radius;
-        const newLng = (baseStore.lng || -122.4194) + Math.cos(angle) * radius;
+            driverSimulationState[driver.id] = newState;
+            return newState;
+        });
 
-        const dLat = newLat - state.lat;
-        const dLng = newLng - state.lng;
-        const heading = (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
+    // 4. Combine Real and Simulated
+    // For real drivers, we ensure history exists
+    const processedRealDrivers = realDrivers.map(rd => ({
+        ...rd,
+        history: rd.history || [], // Ensure history array exists
+        status: rd.status || 'moving',
+        nextStopName: rd.nextStopName || 'En Route'
+    }));
 
-        const newHistory = [...state.history, {lat: newLat, lng: newLng}].slice(-15);
-
-        const newState: DriverLocation = {
-            ...state,
-            driverName: driver.name,
-            lat: newLat,
-            lng: newLng,
-            heading: heading,
-            speed: Math.floor(20 + (idHash % 30)),
-            status: 'moving',
-            history: newHistory,
-            eta: `${Math.floor(10 + (idHash % 20))} mins`
-        };
-
-        driverSimulationState[driver.id] = newState;
-        return newState;
-    });
-
-    return results;
+    return [...processedRealDrivers, ...simulatedDrivers];
   },
 
   syncLocalData: async () => {}

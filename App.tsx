@@ -13,8 +13,8 @@ import { storageService } from './services/storageService';
 import { User } from './types';
 import { Loader2 } from 'lucide-react';
 
-// 2 Hours in milliseconds
-const INACTIVITY_LIMIT = 2 * 60 * 60 * 1000;
+// 1 Hour in milliseconds
+const INACTIVITY_LIMIT = 1 * 60 * 60 * 1000;
 
 // Async Auth Protection
 const PrivateRoute = ({ children }: { children?: React.ReactNode }) => {
@@ -64,21 +64,28 @@ const App: React.FC = () => {
 
     const checkInactivity = () => {
       const lastActivity = localStorage.getItem('lastActivity');
-      // Only check inactivity if we have a record of it
+      
       if (lastActivity) {
+        const lastTime = parseInt(lastActivity);
         const now = Date.now();
-        if (now - parseInt(lastActivity) > INACTIVITY_LIMIT) {
+        
+        // Safety check for corrupted/future timestamps
+        if (isNaN(lastTime) || lastTime > now) {
+            updateActivity();
+            return;
+        }
+
+        if (now - lastTime > INACTIVITY_LIMIT) {
            console.log("Session timed out due to inactivity");
            storageService.logout();
-           // The auth listener in Layout/Routes will handle the redirect
         }
       } else {
-        // Initialize if not present
+        // Initialize if not present (prevents immediate logout on fresh load)
         updateActivity();
       }
     };
 
-    // Set initial activity
+    // Set initial activity on mount to reset the clock on refresh
     updateActivity();
 
     // Listeners for user interaction

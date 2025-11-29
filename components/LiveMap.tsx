@@ -19,8 +19,8 @@ export const LiveMap: React.FC = () => {
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
 
-    // Center on San Francisco (mock location)
-    const map = L.map(mapRef.current).setView([37.7749, -122.4194], 13);
+    // Center on Edmonton Distribution Ctr: 53.5706, -113.4682
+    const map = L.map(mapRef.current).setView([53.5706, -113.4682], 12);
     
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
@@ -87,7 +87,7 @@ export const LiveMap: React.FC = () => {
             <h3 class="font-bold text-slate-800 text-sm">${driver.driverName}</h3>
             <div class="text-xs text-slate-600 mt-1 space-y-1">
               <p>Status: <span class="${driver.status === 'moving' ? 'text-blue-600' : 'text-amber-600'} font-semibold uppercase">${driver.status}</span></p>
-              <p>Speed: ${driver.speed} km/h</p>
+              <p>Speed: ${driver.speed.toFixed(1)} km/h</p>
               <hr class="my-1 border-slate-200"/>
               <p class="font-medium">Next: ${driver.nextStopName}</p>
               <p class="font-bold text-blue-600">ETA: ${driver.eta}</p>
@@ -161,7 +161,7 @@ export const LiveMap: React.FC = () => {
             >
                <div>
                  <p className="font-bold text-slate-800 text-sm">{d.driverName}</p>
-                 <p className="text-slate-500 mt-0.5">{d.status} • {d.speed} km/h</p>
+                 <p className="text-slate-500 mt-0.5">{d.status} • {d.speed.toFixed(0)} km/h</p>
                </div>
                <div className="text-right">
                   <p className="text-indigo-600 font-bold">{d.eta}</p>

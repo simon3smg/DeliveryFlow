@@ -1,21 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Sparkles, AlertCircle, Calendar, Printer, Loader2 } from 'lucide-react';
+import { Download, Sparkles, AlertCircle, Calendar, Printer, Loader2, Package, DollarSign, Store } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { generateDeliveryReportInsight } from '../services/geminiService';
-import { Delivery, Store } from '../types';
+import { Delivery, Store as StoreType } from '../types';
 
 type Timeframe = 'daily' | 'monthly' | 'yearly';
 
 export const Reports: React.FC = () => {
   const [timeframe, setTimeframe] = useState<Timeframe>('monthly');
-  // Initialize date based on type
-  const [dateValue, setDateValue] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [dateValue, setDateValue] = useState(new Date().toISOString().slice(0, 7)); 
   
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
-  const [stores, setStores] = useState<Store[]>([]);
+  const [stores, setStores] = useState<StoreType[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // AI State
   const [aiInsight, setAiInsight] = useState<string>('');
   const [isLoadingAi, setIsLoadingAi] = useState(false);
 
@@ -37,24 +34,14 @@ export const Reports: React.FC = () => {
     fetchData();
   }, []);
 
-  // Update date input when timeframe changes to valid defaults
   useEffect(() => {
     const now = new Date();
-    if (timeframe === 'daily') {
-        setDateValue(now.toISOString().slice(0, 10)); // YYYY-MM-DD
-    } else if (timeframe === 'monthly') {
-        setDateValue(now.toISOString().slice(0, 7)); // YYYY-MM
-    } else if (timeframe === 'yearly') {
-        setDateValue(now.getFullYear().toString()); // YYYY
-    }
+    if (timeframe === 'daily') setDateValue(now.toISOString().slice(0, 10));
+    else if (timeframe === 'monthly') setDateValue(now.toISOString().slice(0, 7));
+    else if (timeframe === 'yearly') setDateValue(now.getFullYear().toString());
   }, [timeframe]);
 
-  const filteredDeliveries = deliveries.filter(d => {
-    if (timeframe === 'daily') return d.timestamp.startsWith(dateValue);
-    if (timeframe === 'monthly') return d.timestamp.startsWith(dateValue);
-    if (timeframe === 'yearly') return d.timestamp.startsWith(dateValue);
-    return false;
-  });
+  const filteredDeliveries = deliveries.filter(d => d.timestamp.startsWith(dateValue));
   
   const totalRevenue = filteredDeliveries.reduce((acc, d) => 
     acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0
@@ -65,18 +52,11 @@ export const Reports: React.FC = () => {
     const storeRevenue = storeDeliveries.reduce((acc, d) => 
         acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0
     );
-    return {
-        ...store,
-        deliveryCount: storeDeliveries.length,
-        revenue: storeRevenue
-    };
+    return { ...store, deliveryCount: storeDeliveries.length, revenue: storeRevenue };
   }).filter(s => s.deliveryCount > 0);
 
   const handlePrint = () => {
-    // Delay slightly to ensure browser rendering is complete if needed
-    setTimeout(() => {
-        window.print();
-    }, 100);
+    setTimeout(() => window.print(), 100);
   };
 
   const handleGenerateAiInsight = async () => {
@@ -87,15 +67,20 @@ export const Reports: React.FC = () => {
     setIsLoadingAi(false);
   };
 
-  const getReportTitle = () => {
-      if (timeframe === 'daily') return `Daily Report: ${dateValue}`;
-      if (timeframe === 'monthly') return `Monthly Report: ${dateValue}`;
-      return `Annual Report: ${dateValue}`;
-  }
+  const SummaryCard = ({ title, value, icon, colorClass }: any) => (
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between h-32 print:border print:border-slate-300 relative overflow-hidden group">
+          <div className={`absolute -right-6 -top-6 w-20 h-20 rounded-full ${colorClass} opacity-5 group-hover:scale-125 transition-transform duration-500 ease-out`}></div>
+          <div>
+              <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
+              <p className={`text-4xl font-bold tracking-tight ${colorClass.replace('bg-', 'text-').replace('-500', '-600').replace('-600', '-700')}`}>{value}</p>
+          </div>
+          <div className={`p-4 rounded-xl ${colorClass} bg-opacity-10 text-${colorClass.split('-')[1]}-600`}>
+              {icon}
+          </div>
+      </div>
+  );
 
-  if (loading) {
-      return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={32}/></div>;
-  }
+  if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={32}/></div>;
 
   return (
     <div className="space-y-8 print:p-0 print:m-0 animate-in fade-in duration-500">
@@ -104,7 +89,6 @@ export const Reports: React.FC = () => {
              <div>
                  <h2 className="hidden md:block text-slate-500 mb-1">Performance Overview</h2>
                  <div className="flex items-center gap-2">
-                    {/* Timeframe Selector */}
                     <div className="relative">
                         <select 
                             value={timeframe}
@@ -120,35 +104,10 @@ export const Reports: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Date Input */}
                     <div className="bg-white p-1 px-3 rounded-xl shadow-sm border border-slate-200">
-                        {timeframe === 'daily' && (
-                            <input 
-                                type="date" 
-                                value={dateValue}
-                                onChange={(e) => setDateValue(e.target.value)}
-                                className="bg-transparent border-none text-sm font-semibold text-slate-700 focus:ring-0 cursor-pointer outline-none"
-                            />
-                        )}
-                        {timeframe === 'monthly' && (
-                            <input 
-                                type="month" 
-                                value={dateValue}
-                                onChange={(e) => setDateValue(e.target.value)}
-                                className="bg-transparent border-none text-sm font-semibold text-slate-700 focus:ring-0 cursor-pointer outline-none"
-                            />
-                        )}
-                        {timeframe === 'yearly' && (
-                            <input 
-                                type="number" 
-                                min="2000" 
-                                max="2099" 
-                                step="1" 
-                                value={dateValue}
-                                onChange={(e) => setDateValue(e.target.value)}
-                                className="bg-transparent border-none text-sm font-semibold text-slate-700 focus:ring-0 cursor-pointer w-20 outline-none"
-                            />
-                        )}
+                        {timeframe === 'daily' && <input type="date" value={dateValue} onChange={(e) => setDateValue(e.target.value)} className="bg-transparent border-none text-sm font-semibold text-slate-700 focus:ring-0 cursor-pointer outline-none"/>}
+                        {timeframe === 'monthly' && <input type="month" value={dateValue} onChange={(e) => setDateValue(e.target.value)} className="bg-transparent border-none text-sm font-semibold text-slate-700 focus:ring-0 cursor-pointer outline-none"/>}
+                        {timeframe === 'yearly' && <input type="number" min="2000" max="2099" step="1" value={dateValue} onChange={(e) => setDateValue(e.target.value)} className="bg-transparent border-none text-sm font-semibold text-slate-700 focus:ring-0 cursor-pointer w-20 outline-none"/>}
                     </div>
                  </div>
              </div>
@@ -159,13 +118,12 @@ export const Reports: React.FC = () => {
         </button>
       </div>
 
-      {/* Report Header for Print */}
-      <div className="hidden print-only mb-8">
-          <h1 className="text-3xl font-bold mb-2">DeliveryFlow Report</h1>
-          <p className="text-slate-500">{getReportTitle()} • Generated on {new Date().toLocaleDateString()}</p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <SummaryCard title="Total Deliveries" value={filteredDeliveries.length} icon={<Package size={28} />} colorClass="bg-blue-500" />
+        <SummaryCard title="Revenue Generated" value={`$${totalRevenue.toFixed(2)}`} icon={<DollarSign size={28} />} colorClass="bg-emerald-500" />
+        <SummaryCard title="Active Stores" value={deliveriesByStore.length} icon={<Store size={28} />} colorClass="bg-indigo-500" />
       </div>
 
-      {/* AI Insight Section */}
       <div className="relative group no-print">
         <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500 to-violet-600 rounded-2xl opacity-30 group-hover:opacity-50 blur transition duration-500"></div>
         <div className="relative bg-white rounded-2xl p-8">
@@ -180,57 +138,18 @@ export const Reports: React.FC = () => {
                     </div>
                 </div>
                 {!aiInsight && !isLoadingAi && (
-                    <button 
-                        onClick={handleGenerateAiInsight}
-                        className="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full hover:bg-indigo-100 transition-colors"
-                    >
+                    <button onClick={handleGenerateAiInsight} className="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full hover:bg-indigo-100 transition-colors">
                         Generate Analysis
                     </button>
                 )}
             </div>
-            
             <div className="min-h-[60px]">
-                {isLoadingAi && (
-                    <div className="flex items-center gap-3 text-slate-500 animate-pulse">
-                        <div className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce"></div>
-                        <div className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce delay-75"></div>
-                        <div className="h-2 w-2 bg-indigo-500 rounded-full animate-bounce delay-150"></div>
-                        <span className="text-sm font-medium">Analyzing sales data...</span>
-                    </div>
-                )}
-
-                {aiInsight && (
-                    <div className="prose prose-indigo prose-sm max-w-none text-slate-600 leading-relaxed whitespace-pre-line bg-slate-50/50 p-4 rounded-xl border border-slate-100">
-                        {aiInsight}
-                    </div>
-                )}
-
-                {!aiInsight && !isLoadingAi && (
-                    <p className="text-slate-400 text-sm italic">
-                        Click the button to generate a performance review and optimization suggestions for this period.
-                    </p>
-                )}
+                {isLoadingAi && <div className="flex items-center gap-3 text-slate-500 animate-pulse"><Loader2 className="animate-spin"/> Analyzing sales data...</div>}
+                {aiInsight && <div className="prose prose-indigo prose-sm max-w-none text-slate-600 leading-relaxed whitespace-pre-line bg-slate-50/50 p-4 rounded-xl border border-slate-100">{aiInsight}</div>}
             </div>
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between h-32 print:border print:border-slate-300">
-            <p className="text-slate-500 text-sm font-medium">Total Deliveries</p>
-            <p className="text-4xl font-bold text-slate-800 tracking-tight">{filteredDeliveries.length}</p>
-        </div>
-         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between h-32 print:border print:border-slate-300">
-            <p className="text-slate-500 text-sm font-medium">Revenue Generated</p>
-            <p className="text-4xl font-bold text-indigo-600 tracking-tight">${totalRevenue.toFixed(2)}</p>
-        </div>
-         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between h-32 print:border print:border-slate-300">
-            <p className="text-slate-500 text-sm font-medium">Active Stores</p>
-            <p className="text-4xl font-bold text-slate-800 tracking-tight">{deliveriesByStore.length}</p>
-        </div>
-      </div>
-
-      {/* Detailed Table */}
       <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden print:border print:border-slate-300">
         <div className="p-6 border-b border-slate-50 bg-slate-50/30 print:bg-white print:border-slate-200">
             <h3 className="font-bold text-lg text-slate-800">{timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Breakdown</h3>
@@ -245,135 +164,18 @@ export const Reports: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-slate-50 text-sm print:divide-slate-200">
                 {deliveriesByStore.length === 0 ? (
-                    <tr>
-                        <td colSpan={3} className="p-12 text-center text-slate-400">
-                            No data for this period.
-                        </td>
-                    </tr>
+                    <tr><td colSpan={3} className="p-12 text-center text-slate-400">No data for this period.</td></tr>
                 ) : (
                     deliveriesByStore.map(store => (
                         <tr key={store.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="p-5 pl-6 font-semibold text-slate-700">{store.name}</td>
-                            <td className="p-5 text-center">
-                                <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full font-bold text-xs print:bg-transparent print:text-slate-800">{store.deliveryCount}</span>
-                            </td>
+                            <td className="p-5 text-center"><span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full font-bold text-xs print:bg-transparent print:text-slate-800">{store.deliveryCount}</span></td>
                             <td className="p-5 pr-6 text-right font-mono font-medium text-slate-800">${store.revenue.toFixed(2)}</td>
                         </tr>
                     ))
                 )}
             </tbody>
         </table>
-      </div>
-
-      {/* Invoice Section Preview */}
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 p-8 break-inside-avoid print:border print:border-slate-300">
-        <h3 className="font-bold text-xl text-slate-800 mb-6">Invoices</h3>
-        {deliveriesByStore.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {deliveriesByStore.map(store => (
-                    <div key={store.id} className="flex justify-between items-center p-5 border border-slate-100 rounded-2xl hover:border-indigo-100 hover:shadow-md transition-all group bg-slate-50/30 print:bg-white print:border-slate-300">
-                        <div>
-                            <p className="font-bold text-slate-800">{store.name}</p>
-                            <p className="text-xs text-slate-400 mt-1 font-mono">INV-{dateValue.replace(/\D/g, '')}-{store.id.substr(0,4)}</p>
-                        </div>
-                        <div className="text-right">
-                             <p className="font-bold text-slate-900 text-lg">${store.revenue.toFixed(2)}</p>
-                             <span className="text-[10px] uppercase font-bold text-amber-500 bg-amber-50 px-2 py-0.5 rounded-full flex items-center justify-end gap-1 w-fit ml-auto mt-1 print:bg-transparent print:text-slate-600">
-                                <AlertCircle size={10} /> Generated
-                             </span>
-                             {/* Individual Print Button - Visible on screen, hidden on print */}
-                             <button 
-                                onClick={() => {
-                                    // Hacky way to filter print view to just this invoice for demo simplicity
-                                    // In a real app, open a new window or specialized modal
-                                    const allInvoices = document.querySelectorAll('.invoice-item');
-                                    // Implementation omitted for brevity in single-file response logic
-                                    window.print();
-                                }}
-                                className="no-print mt-2 text-xs text-indigo-600 font-semibold hover:underline flex items-center justify-end gap-1 w-full"
-                             >
-                                <Printer size={12}/> Print Only This
-                             </button>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        ) : (
-            <div className="text-center p-8 text-slate-400 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 print:bg-white print:border-slate-300">
-                No invoices generated.
-            </div>
-        )}
-      </div>
-
-      {/* Hidden Print-Only Invoice Details */}
-      <div className="hidden print-only">
-        {deliveriesByStore.map(store => {
-            const storeDeliveries = filteredDeliveries.filter(d => d.storeId === store.id);
-            // Group by day
-            const dailyBreakdown: Record<string, {items: string[], total: number}> = {};
-            storeDeliveries.forEach(d => {
-                const day = new Date(d.timestamp).toLocaleDateString();
-                if(!dailyBreakdown[day]) dailyBreakdown[day] = {items: [], total: 0};
-                
-                const dayTotal = d.items.reduce((s,i) => s + (i.quantity * i.priceAtDelivery), 0);
-                dailyBreakdown[day].total += dayTotal;
-                d.items.forEach(i => {
-                    dailyBreakdown[day].items.push(`${i.productName} (x${i.quantity})`);
-                });
-            });
-
-            return (
-                <div key={store.id} className="break-before-page pt-8">
-                    <div className="flex justify-between border-b-2 border-slate-800 pb-4 mb-6">
-                        <div>
-                            <h2 className="text-2xl font-bold">INVOICE</h2>
-                            <p className="text-slate-500 font-mono">#{dateValue.replace(/\D/g, '')}-{store.id.substr(0,4)}</p>
-                        </div>
-                        <div className="text-right">
-                            <h3 className="font-bold text-lg">DeliveryFlow Logistics</h3>
-                            <p className="text-sm text-slate-500">123 Warehouse Dist.<br/>San Francisco, CA 94103</p>
-                        </div>
-                    </div>
-
-                    <div className="mb-8 p-4 bg-slate-50 border rounded-xl">
-                        <p className="text-xs text-slate-400 uppercase font-bold">Bill To:</p>
-                        <p className="font-bold text-lg">{store.name}</p>
-                        <p>{store.address}</p>
-                        <p>{store.contactPerson} - {store.phone}</p>
-                    </div>
-
-                    <table className="w-full text-left mb-8">
-                        <thead>
-                            <tr className="border-b border-slate-300">
-                                <th className="py-2">Date</th>
-                                <th className="py-2">Description / Items</th>
-                                <th className="py-2 text-right">Daily Total</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                            {Object.entries(dailyBreakdown).map(([day, data]) => (
-                                <tr key={day}>
-                                    <td className="py-3 align-top text-sm font-medium">{day}</td>
-                                    <td className="py-3 align-top text-sm text-slate-600">
-                                        {data.items.join(', ')}
-                                    </td>
-                                    <td className="py-3 align-top text-right font-mono">${data.total.toFixed(2)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-
-                    <div className="flex justify-end">
-                        <div className="w-64">
-                            <div className="flex justify-between py-2 border-t border-slate-800">
-                                <span className="font-bold text-lg">TOTAL DUE</span>
-                                <span className="font-bold text-lg">${store.revenue.toFixed(2)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        })}
       </div>
     </div>
   );
