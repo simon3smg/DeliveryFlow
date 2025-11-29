@@ -1,3 +1,4 @@
+
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -86,7 +87,8 @@ onAuthStateChanged(auth, async (fbUser) => {
             name: fbUser.displayName || userData.name || fbUser.email?.split('@')[0] || 'User',
             email: fbUser.email || '',
             role: userData.role || 'driver',
-            avatar: userData.avatar || ''
+            avatar: userData.avatar || '',
+            darkMode: userData.darkMode
         };
         
         isAuthReady = true;
@@ -165,14 +167,16 @@ export const storageService = {
         name: data.name,
         email: data.email,
         role: data.role,
-        avatar: ''
+        avatar: '',
+        darkMode: false
     });
     
     const newUser: User = {
         id: fbUser.uid,
         name: data.name,
         email: data.email,
-        role: data.role
+        role: data.role,
+        darkMode: false
     };
 
     await new Promise(r => setTimeout(r, 500));
@@ -207,11 +211,17 @@ export const storageService = {
     }
 
     const userRef = doc(db, 'users', user.id);
-    await updateDoc(userRef, {
+    const updateData: any = {
         name: user.name,
         role: user.role,
         avatar: user.avatar
-    });
+    };
+
+    if (user.darkMode !== undefined) {
+        updateData.darkMode = user.darkMode;
+    }
+
+    await updateDoc(userRef, updateData);
     
     if (currentUser && currentUser.id === user.id) {
         notifySubscribers({...currentUser, ...user});

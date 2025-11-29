@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -36,6 +37,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   // Check Dark Mode Preference on Mount
   useEffect(() => {
+    // Initial check from local storage to avoid flash
     const isDark = localStorage.getItem('darkMode') === 'true';
     if (isDark) {
       document.documentElement.classList.add('dark');
@@ -60,6 +62,17 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             storageService.startTracking();
         } else {
             storageService.stopTracking();
+        }
+        
+        // Sync Dark Mode from User Profile
+        if (user && typeof user.darkMode === 'boolean') {
+             if (user.darkMode) {
+                 document.documentElement.classList.add('dark');
+                 localStorage.setItem('darkMode', 'true');
+             } else {
+                 document.documentElement.classList.remove('dark');
+                 localStorage.setItem('darkMode', 'false');
+             }
         }
     });
     return () => {

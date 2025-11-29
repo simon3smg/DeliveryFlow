@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { User, Bell, Shield, LogOut, Store, Package, Loader2, Moon, Sun, Key, Camera } from 'lucide-react';
 import { storageService } from '../services/storageService';
@@ -33,18 +34,34 @@ export const Settings: React.FC = () => {
         }
         setUser(u);
         setFormData({ name: u.name, email: u.email, avatar: u.avatar || '' });
+        
+        // Sync toggle state with user pref if available
+        if (u.darkMode !== undefined) {
+             setIsDarkMode(u.darkMode);
+        }
     });
     return () => unsub();
   }, [navigate]);
 
-  const toggleDarkMode = () => {
+  const toggleDarkMode = async () => {
     const newMode = !isDarkMode;
     setIsDarkMode(newMode);
+    
+    // Apply locally immediately for feedback
     localStorage.setItem('darkMode', String(newMode));
     if (newMode) {
         document.documentElement.classList.add('dark');
     } else {
         document.documentElement.classList.remove('dark');
+    }
+
+    // Persist to Firebase
+    if (user) {
+        try {
+            await storageService.updateUser({ ...user, darkMode: newMode });
+        } catch(e) {
+            console.error("Failed to save dark mode preference", e);
+        }
     }
   };
 

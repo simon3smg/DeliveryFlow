@@ -47,6 +47,7 @@ export interface User {
   password?: string; // In real app, never store plain text
   role: 'admin' | 'driver';
   avatar?: string;
+  darkMode?: boolean;
 }
 
 export interface MonthlyReport {
