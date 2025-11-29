@@ -241,12 +241,12 @@ export const storageService = {
     locationWatchId = navigator.geolocation.watchPosition(
         (position) => {
             const { latitude, longitude, heading, speed } = position.coords;
+            // Update local and remote
             storageService.updateDriverLocation(latitude, longitude, heading || 0, speed || 0);
         },
         (err) => {
             console.warn("Location tracking error:", err);
             // On error, we might be offline or denied. 
-            // If offline, we can't do much but retry. 
         },
         {
             enableHighAccuracy: true,
@@ -267,9 +267,7 @@ export const storageService = {
   updateDriverLocation: async (lat: number, lng: number, heading: number = 0, speed: number = 0) => {
     if (!currentUser || currentUser.role !== 'driver') return;
     
-    try {
-      const locationRef = doc(db, 'driver_locations', currentUser.id);
-      const data = {
+    const data = {
         driverId: currentUser.id,
         driverName: currentUser.name,
         lat,
@@ -277,21 +275,32 @@ export const storageService = {
         heading,
         speed,
         timestamp: Date.now(),
-        status: (speed && speed > 0.5) ? 'moving' : 'stopped'
-      };
-      
-      await setDoc(locationRef, data, { merge: true });
-      
-      // Update local simulation state so map updates immediately for self
-      driverSimulationState[currentUser.id] = {
-          ...data,
-          status: data.status as any,
-          history: driverSimulationState[currentUser.id]?.history || []
-      };
+        status: (speed && speed > 0.5) ? 'moving' : 'stopped' as 'moving' | 'stopped'
+    };
 
+    // 1. Update Local Caches immediately for responsive UI (Simulation State)
+    driverSimulationState[currentUser.id] = {
+        ...data,
+        status: data.status,
+        history: driverSimulationState[currentUser.id]?.history || [],
+        eta: 'Updated just now'
+    };
+
+    // 2. Update Real Driver Cache (Used for map display if offline)
+    const cachedIndex = lastKnownRealDrivers.findIndex(d => d.driverId === currentUser?.id);
+    if (cachedIndex >= 0) {
+        lastKnownRealDrivers[cachedIndex] = { ...lastKnownRealDrivers[cachedIndex], ...data };
+    } else {
+        // Fix: Ensure history is initialized when adding new driver
+        lastKnownRealDrivers.push({ ...data, history: [] } as DriverLocation);
+    }
+
+    // 3. Update Firestore (Async, queued if offline)
+    try {
+      const locationRef = doc(db, 'driver_locations', currentUser.id);
+      await setDoc(locationRef, data, { merge: true });
     } catch (e) {
       console.warn("Error updating location (offline mode active):", e);
-      // Firebase SDK handles persistence, so this catch mainly catches permission/logic errors
     }
   },
 
@@ -365,12 +374,12 @@ export const storageService = {
   getDriverLocations: () => [],
   
   simulateDriverMovement: async () => {
-    // 1. Fetch Real Locations from DB
+    // 1. Fetch Real Locations from DB with Offline Fallback
     let realDrivers: DriverLocation[] = [];
     try {
         const querySnapshot = await getDocs(collection(db, 'driver_locations'));
         realDrivers = querySnapshot.docs.map(doc => doc.data() as DriverLocation);
-        lastKnownRealDrivers = realDrivers; // Update cache
+        lastKnownRealDrivers = realDrivers; // Update cache on success
     } catch(e) { 
         console.warn("Using offline driver cache");
         realDrivers = lastKnownRealDrivers;
@@ -385,6 +394,7 @@ export const storageService = {
         users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
     } catch(e) { /* ignore */ }
 
+    // If no real drivers and no users, return empty
     if (users.length === 0 && realDrivers.length === 0) return [];
 
     let stores: Store[] = [];
@@ -392,7 +402,7 @@ export const storageService = {
         stores = await storageService.getStores();
     } catch(e) { /* ignore */ }
     
-    // Fallback to Edmonton
+    // Use Edmonton Base
     const baseLat = stores.length > 0 && stores[0].lat ? stores[0].lat : BASE_LAT;
     const baseLng = stores.length > 0 && stores[0].lng ? stores[0].lng : BASE_LNG;
 

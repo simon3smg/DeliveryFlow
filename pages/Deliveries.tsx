@@ -140,12 +140,22 @@ export const Deliveries: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   const [deliveryToDelete, setDeliveryToDelete] = useState<string | null>(null);
   
-  // Filters
-  const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState(() => {
+  // Helpers for date string YYYY-MM-DD
+  const getTodayString = () => {
     const now = new Date();
     return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-  });
+  };
+
+  const formatDateDisplay = (dateStr: string) => {
+     if (!dateStr) return '';
+     const [y, m, d] = dateStr.split('-').map(Number);
+     const date = new Date(y, m - 1, d);
+     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState(getTodayString);
   
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -186,10 +196,11 @@ export const Deliveries: React.FC = () => {
   };
 
   const changeDate = (days: number) => {
-      const current = new Date(dateFilter);
-      const utcDate = new Date(current.getTime() + current.getTimezoneOffset() * 60000);
-      utcDate.setDate(utcDate.getDate() + days);
-      const nextDate = utcDate.getFullYear() + '-' + String(utcDate.getMonth() + 1).padStart(2, '0') + '-' + String(utcDate.getDate()).padStart(2, '0');
+      // Safe arithmetic using date parts to avoid UTC shifting
+      const [y, m, d] = dateFilter.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      date.setDate(date.getDate() + days);
+      const nextDate = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
       setDateFilter(nextDate);
   };
 
@@ -350,7 +361,7 @@ export const Deliveries: React.FC = () => {
                     <div className="flex items-center gap-2 px-4 py-1 cursor-pointer">
                         <Calendar size={16} className="text-indigo-600" />
                         <span className="text-sm font-bold text-slate-700 whitespace-nowrap">
-                            {new Date(dateFilter).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            {formatDateDisplay(dateFilter)}
                         </span>
                     </div>
                     <input 
@@ -400,8 +411,7 @@ export const Deliveries: React.FC = () => {
                  <p className="font-medium text-slate-600">No deliveries found for this date.</p>
                  <button 
                     onClick={() => {
-                        const today = new Date();
-                        setDateFilter(today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0'));
+                        setDateFilter(getTodayString());
                         setSearchTerm('');
                     }}
                     className="mt-4 text-indigo-600 font-bold text-sm hover:underline"

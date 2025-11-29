@@ -89,8 +89,8 @@ export const LiveMap: React.FC = () => {
               <p>Status: <span class="${driver.status === 'moving' ? 'text-blue-600' : 'text-amber-600'} font-semibold uppercase">${driver.status}</span></p>
               <p>Speed: ${driver.speed.toFixed(1)} km/h</p>
               <hr class="my-1 border-slate-200"/>
-              <p class="font-medium">Next: ${driver.nextStopName}</p>
-              <p class="font-bold text-blue-600">ETA: ${driver.eta}</p>
+              <p class="font-medium">Next: ${driver.nextStopName || 'Assigned Route'}</p>
+              <p class="font-bold text-blue-600">ETA: ${driver.eta || 'Calculating...'}</p>
             </div>
           </div>
         `;
@@ -114,19 +114,21 @@ export const LiveMap: React.FC = () => {
       }
 
       // 2. Update History Trail (Polyline)
-      const trailCoords = driver.history.map(h => [h.lat, h.lng]);
-      trailCoords.push([driver.lat, driver.lng]); // Add current position
+      if (driver.history && driver.history.length > 0) {
+        const trailCoords = driver.history.map(h => [h.lat, h.lng]);
+        trailCoords.push([driver.lat, driver.lng]); // Add current position
 
-      if (polylinesRef.current[driver.driverId]) {
-        polylinesRef.current[driver.driverId].setLatLngs(trailCoords);
-      } else {
-        const polyline = L.polyline(trailCoords, { 
-          color: '#4f46e5', // indigo-600 
-          weight: 4, 
-          opacity: 0.5,
-          lineCap: 'round'
-        }).addTo(map);
-        polylinesRef.current[driver.driverId] = polyline;
+        if (polylinesRef.current[driver.driverId]) {
+          polylinesRef.current[driver.driverId].setLatLngs(trailCoords);
+        } else {
+          const polyline = L.polyline(trailCoords, { 
+            color: '#4f46e5', // indigo-600 
+            weight: 4, 
+            opacity: 0.5,
+            lineCap: 'round'
+          }).addTo(map);
+          polylinesRef.current[driver.driverId] = polyline;
+        }
       }
     });
 
@@ -164,8 +166,8 @@ export const LiveMap: React.FC = () => {
                  <p className="text-slate-500 mt-0.5">{d.status} • {d.speed.toFixed(0)} km/h</p>
                </div>
                <div className="text-right">
-                  <p className="text-indigo-600 font-bold">{d.eta}</p>
-                  <p className="text-[10px] text-slate-400">to {d.nextStopName?.split(' ')[0]}</p>
+                  <p className="text-indigo-600 font-bold">{d.eta || '-'}</p>
+                  <p className="text-[10px] text-slate-400">to {d.nextStopName?.split(' ')[0] || 'Unknown'}</p>
                </div>
             </div>
           ))}

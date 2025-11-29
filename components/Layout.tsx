@@ -55,8 +55,9 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         setCurrentUser(user);
         setIsOnline(storageService.isUsingFirebase());
 
-        // Tracking Logic
+        // Tracking Logic: Automatically track driver position when logged in
         if (user && user.role === 'driver') {
+            console.log("Initializing driver tracking...");
             storageService.startTracking();
         } else {
             storageService.stopTracking();
