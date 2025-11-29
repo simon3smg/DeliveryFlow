@@ -49,7 +49,11 @@ const App: React.FC = () => {
   
   // Initialize Database Connection Probe
   useEffect(() => {
-    storageService.init();
+    try {
+        storageService.init();
+    } catch (e) {
+        console.error("Failed to init storage service:", e);
+    }
   }, []);
 
   // Inactivity Logic

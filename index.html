@@ -10,13 +10,16 @@
       window.addEventListener('error', function(event) {
         const root = document.getElementById('root');
         if (root) {
-          root.innerHTML = `
-            <div style="color: #ef4444; padding: 20px; font-family: system-ui; text-align: center;">
-              <h2 style="font-size: 1.2rem; font-weight: bold; margin-bottom: 10px;">Application Error</h2>
-              <p style="background: #fee2e2; padding: 10px; border-radius: 8px; display: inline-block; font-family: monospace;">${event.message}</p>
-              <p style="font-size: 0.8rem; color: #666; margin-top: 10px;">Check console for details.</p>
-            </div>
-          `;
+          // Only show if root is still empty/loading
+          if (root.innerText.includes('Loading')) {
+             root.innerHTML = `
+                <div style="color: #ef4444; padding: 20px; font-family: system-ui; text-align: center; max-width: 600px; margin: 0 auto;">
+                <h2 style="font-size: 1.2rem; font-weight: bold; margin-bottom: 10px;">Application Error</h2>
+                <p style="background: #fee2e2; padding: 10px; border-radius: 8px; display: inline-block; font-family: monospace; font-size: 0.9rem;">${event.message}</p>
+                <p style="font-size: 0.8rem; color: #666; margin-top: 10px;">Check console for details.</p>
+                </div>
+            `;
+          }
         }
       });
     </script>
@@ -82,14 +85,10 @@
     "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
     "react-router-dom": "https://aistudiocdn.com/react-router-dom@^6.22.0",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.0",
     "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
     "firebase/auth": "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js",
     "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js",
-    "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "firebase/": "https://aistudiocdn.com/firebase@^12.6.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/"
+    "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js"
   }
 }
 </script>
