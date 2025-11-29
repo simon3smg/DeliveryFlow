@@ -49,7 +49,6 @@ export const isFirebaseConfigured = true;
 let currentUser: User | null = null;
 const authSubscribers = new Set<(user: User | null) => void>();
 
-// Persistent state for simulation so drivers don't jump around randomly
 let driverSimulationState: Record<string, DriverLocation> = {};
 
 const notifySubscribers = (user: User | null) => {
@@ -83,10 +82,8 @@ onAuthStateChanged(auth, async (fbUser) => {
     }
 });
 
-// --- HELPER ---
 const mapDoc = <T>(doc: any): T => ({ id: doc.id, ...doc.data() } as T);
 
-// --- INITIAL SEED DATA (Only used if DB is empty) ---
 const seedStores: Partial<Store>[] = [
   { name: 'Downtown Market', address: '123 Market St, San Francisco', contactPerson: 'John Doe', phone: '555-0101', email: 'john@market.com', lat: 37.7941, lng: -122.3956 },
   { name: 'Westside Grocers', address: '456 Divisadero St, San Francisco', contactPerson: 'Jane Smith', phone: '555-0102', email: 'jane@grocers.com', lat: 37.7725, lng: -122.4371 },
@@ -128,6 +125,7 @@ export const storageService = {
     // 3. WAIT for the profile to be loaded by the global listener.
     const waitForProfile = async (): Promise<User> => {
         let attempts = 0;
+        // Wait up to 5 seconds for the profile listener to fire
         while (attempts < 50) { 
             if (currentUser && currentUser.id === cred.user.uid) {
                 return currentUser;
@@ -167,6 +165,7 @@ export const storageService = {
         role: data.role
     };
 
+    // Allow time for propagation
     await new Promise(r => setTimeout(r, 500));
     
     if (!currentUser || currentUser.id !== newUser.id) {
@@ -265,8 +264,8 @@ export const storageService = {
   },
   
   saveDelivery: async (delivery: Delivery) => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { id, ...data } = delivery; 
+    // If ID is numeric (mock), let firestore gen new ID, else use existing
     await addDoc(collection(db, 'deliveries'), data);
   },
 
@@ -278,22 +277,19 @@ export const storageService = {
   // --- DRIVER SIMULATION ---
   getDriverLocations: () => [],
   
-  // Real-time Driver Simulation connected to actual users
   simulateDriverMovement: async () => {
     let drivers: User[] = [];
     try {
-        // 1. Fetch real users who are marked as drivers
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('role', '==', 'driver'));
         const snapshot = await getDocs(q);
         drivers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
         
-        // If current user is a driver but not in DB list (latency), add them locally
         if (currentUser && currentUser.role === 'driver' && !drivers.find(d => d.id === currentUser?.id)) {
             drivers.push(currentUser);
         }
     } catch(e) {
-        console.warn("Failed to fetch drivers, defaulting to empty", e);
+        console.warn("Failed to fetch drivers", e);
     }
     
     if (drivers.length === 0) return [];
@@ -305,12 +301,10 @@ export const storageService = {
     
     const baseStore = stores.length > 0 ? stores[0] : { lat: 37.7749, lng: -122.4194, name: 'Base' } as Store;
 
-    // 2. Update state for each real driver
     const results: DriverLocation[] = drivers.map(driver => {
         let state = driverSimulationState[driver.id];
 
         if (!state) {
-            // Initialize new driver on the map
             state = {
                 driverId: driver.id,
                 driverName: driver.name,
@@ -325,20 +319,16 @@ export const storageService = {
             };
         }
 
-        // 3. Move them (Simulation logic)
-        // We use the ID to create a unique movement pattern for each user so they don't stack
         const time = Date.now();
         const idHash = driver.id.split('').reduce((a,c) => a + c.charCodeAt(0), 0);
         
-        // Orbital movement
-        const speedFactor = 0.0001; // Movement speed
-        const radius = 0.01 + (idHash % 20) * 0.001; // Different radius for each driver
+        const speedFactor = 0.0001;
+        const radius = 0.01 + (idHash % 20) * 0.001; 
         const angle = (time * speedFactor) + (idHash % 100);
         
         const newLat = (baseStore.lat || 37.7749) + Math.sin(angle) * radius;
         const newLng = (baseStore.lng || -122.4194) + Math.cos(angle) * radius;
 
-        // Calculate heading
         const dLat = newLat - state.lat;
         const dLng = newLng - state.lng;
         const heading = (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
@@ -347,7 +337,7 @@ export const storageService = {
 
         const newState: DriverLocation = {
             ...state,
-            driverName: driver.name, // Ensure name stays updated
+            driverName: driver.name,
             lat: newLat,
             lng: newLng,
             heading: heading,
