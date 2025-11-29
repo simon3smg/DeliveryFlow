@@ -1,3 +1,4 @@
+
 export interface Store {
   id: string;
   name: string;
@@ -7,6 +8,7 @@ export interface Store {
   email: string;
   lat?: number;
   lng?: number;
+  paymentMethod: 'cash' | 'credit';
 }
 
 export interface Product {
@@ -34,6 +36,8 @@ export interface Delivery {
   signatureDataUrl: string; // Base64 image of signature
   notes?: string;
   status: 'completed' | 'pending';
+  paymentMethod: 'cash' | 'credit';
+  paymentStatus: 'paid' | 'pending';
 }
 
 export interface User {

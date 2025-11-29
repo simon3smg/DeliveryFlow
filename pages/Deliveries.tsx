@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, MapPin, Package, X, Trash2, CheckCircle, ArrowRight, User, Store as StoreIcon, Loader2, Calendar, Edit2, ChevronLeft, ChevronRight, Clock, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react';
+import { Plus, Search, MapPin, Package, X, Trash2, CheckCircle, ArrowRight, User, Store as StoreIcon, Loader2, Calendar, Edit2, ChevronLeft, ChevronRight, Clock, ChevronDown, ChevronUp, AlertTriangle, CreditCard, Banknote, DollarSign, Wallet } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Delivery, Store, Product, DeliveryItem, User as UserType } from '../types';
 import { SignaturePad } from '../components/SignaturePad';
@@ -9,11 +10,15 @@ const DeliveryCard: React.FC<{
     delivery: Delivery; 
     onEdit: (e: React.MouseEvent, d: Delivery) => void;
     onDelete: (e: React.MouseEvent, id: string) => void;
-}> = ({ delivery, onEdit, onDelete }) => {
+    onMarkPaid: (e: React.MouseEvent, d: Delivery) => void;
+}> = ({ delivery, onEdit, onDelete, onMarkPaid }) => {
   const [expanded, setExpanded] = useState(false);
 
   const totalValue = delivery.items.reduce((sum, item) => sum + (item.quantity * item.priceAtDelivery), 0);
   const itemCount = delivery.items.reduce((sum, item) => sum + item.quantity, 0);
+
+  // Determine if this is an unpaid cash delivery
+  const isUnpaidCash = delivery.paymentMethod === 'cash' && delivery.paymentStatus === 'pending';
 
   return (
     <div 
@@ -32,6 +37,17 @@ const DeliveryCard: React.FC<{
                  <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(delivery.timestamp).toLocaleDateString()}</span>
                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
                  <span className="font-medium text-slate-600">{itemCount} items</span>
+                 
+                 {/* Payment Method Badge */}
+                 {delivery.paymentMethod === 'cash' ? (
+                     <span className={`flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded border text-[10px] font-bold uppercase ${isUnpaidCash ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                        <Banknote size={10} /> {isUnpaidCash ? 'Cash Pending' : 'Cash Paid'}
+                     </span>
+                 ) : (
+                     <span className="flex items-center gap-1 ml-2 text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 text-[10px] font-bold uppercase">
+                        <CreditCard size={10} /> Credit
+                     </span>
+                 )}
               </div>
            </div>
         </div>
@@ -70,6 +86,22 @@ const DeliveryCard: React.FC<{
                  </span>
               </div>
               
+              {/* Unpaid Warning Banner */}
+              {isUnpaidCash && (
+                 <div className="flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-xs shadow-sm">
+                     <div className="flex items-center gap-2">
+                        <AlertTriangle size={16} />
+                        <span className="font-bold">Payment Not Collected</span>
+                     </div>
+                     <button 
+                        onClick={(e) => onMarkPaid(e, delivery)}
+                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-bold text-[10px] uppercase tracking-wide shadow-sm transition-colors flex items-center gap-1"
+                     >
+                        Mark as Paid
+                     </button>
+                 </div>
+              )}
+
               {/* Item List */}
               <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                  <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex justify-between">
@@ -134,6 +166,8 @@ const DeliveryCard: React.FC<{
 
 export const Deliveries: React.FC = () => {
   const [view, setView] = useState<'list' | 'create' | 'edit'>('list');
+  const [filterMode, setFilterMode] = useState<'daily' | 'pending'>('daily');
+  
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -166,10 +200,14 @@ export const Deliveries: React.FC = () => {
   const [cart, setCart] = useState<DeliveryItem[]>([]);
   const [signature, setSignature] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
+  const [cashReceived, setCashReceived] = useState(true);
 
   // Helper Form State
   const [selectedProductId, setSelectedProductId] = useState('');
   const [quantity, setQuantity] = useState(1);
+
+  // Computed properties
+  const selectedStore = stores.find(s => s.id === selectedStoreId);
 
   useEffect(() => {
     refreshData();
@@ -235,8 +273,30 @@ export const Deliveries: React.FC = () => {
       setCart(delivery.items);
       setSignature(delivery.signatureDataUrl);
       setNotes(delivery.notes || '');
+      // If it's a cash delivery and status is NOT paid (i.e. pending), then cashReceived is false.
+      // Default to true for paid or undefined (legacy).
+      if (delivery.paymentMethod === 'cash' && delivery.paymentStatus === 'pending') {
+          setCashReceived(false);
+      } else {
+          setCashReceived(true);
+      }
       setView('edit');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleMarkPaid = async (e: React.MouseEvent, delivery: Delivery) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        await storageService.updateDelivery({
+            ...delivery,
+            paymentStatus: 'paid'
+        });
+        await refreshData();
+      } catch (err) {
+        console.error("Failed to mark as paid", err);
+        alert("Failed to update payment status.");
+      }
   };
 
   const handleDeleteClick = (e: React.MouseEvent, id: string) => {
@@ -287,6 +347,18 @@ export const Deliveries: React.FC = () => {
         }
     }
 
+    // Determine payment status
+    // Cash + Received = 'paid'
+    // Cash + Not Received = 'pending'
+    // Credit = 'pending' (but reports handle this by method type)
+    let paymentStatus: 'paid' | 'pending' = 'pending';
+    
+    if (store?.paymentMethod === 'cash') {
+        paymentStatus = cashReceived ? 'paid' : 'pending';
+    } else {
+        paymentStatus = 'pending'; // Credit is always collected later (end of month)
+    }
+
     const payload: Delivery = {
       id,
       storeId: selectedStoreId,
@@ -296,7 +368,9 @@ export const Deliveries: React.FC = () => {
       signatureDataUrl: signature,
       notes,
       timestamp,
-      status: 'completed'
+      status: 'completed',
+      paymentMethod: store?.paymentMethod || 'credit',
+      paymentStatus: paymentStatus
     };
 
     try {
@@ -322,17 +396,28 @@ export const Deliveries: React.FC = () => {
     setCart([]);
     setSignature(null);
     setNotes('');
+    setCashReceived(true);
   };
 
   const filteredDeliveries = deliveries.filter(d => {
     const searchMatch = d.storeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         d.driverName.toLowerCase().includes(searchTerm.toLowerCase());
     
+    if (filterMode === 'pending') {
+        // Show all unpaid cash deliveries regardless of date
+        return searchMatch && d.paymentMethod === 'cash' && d.paymentStatus === 'pending';
+    }
+
+    // Daily View
     const deliveryDate = new Date(d.timestamp);
     const deliveryDateStr = deliveryDate.getFullYear() + '-' + String(deliveryDate.getMonth() + 1).padStart(2, '0') + '-' + String(deliveryDate.getDate()).padStart(2, '0');
     
     return searchMatch && deliveryDateStr === dateFilter;
   });
+
+  const totalPendingAmount = deliveries
+    .filter(d => d.paymentMethod === 'cash' && d.paymentStatus === 'pending')
+    .reduce((acc, d) => acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0);
 
   if (loading && view === 'list' && deliveries.length === 0) {
       return (
@@ -348,36 +433,58 @@ export const Deliveries: React.FC = () => {
       {view === 'list' && (
         <>
           <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm sticky top-0 z-20">
-             {/* Date Navigator */}
-             <div className="flex items-center bg-slate-50 rounded-2xl border border-slate-200 p-1 w-full sm:w-auto justify-between sm:justify-start">
-                <button 
-                    onClick={() => changeDate(-1)} 
-                    className="p-3 hover:bg-white hover:shadow-sm rounded-xl text-slate-500 transition-all active:scale-95"
-                    title="Previous Day"
-                >
-                    <ChevronLeft size={20} />
-                </button>
-                <div className="relative mx-2 group">
-                    <div className="flex items-center gap-2 px-4 py-1 cursor-pointer">
-                        <Calendar size={16} className="text-indigo-600" />
-                        <span className="text-sm font-bold text-slate-700 whitespace-nowrap">
-                            {formatDateDisplay(dateFilter)}
-                        </span>
-                    </div>
-                    <input 
-                        type="date"
-                        value={dateFilter}
-                        onChange={(e) => setDateFilter(e.target.value)}
-                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                    />
-                </div>
-                <button 
-                    onClick={() => changeDate(1)} 
-                    className="p-3 hover:bg-white hover:shadow-sm rounded-xl text-slate-500 transition-all active:scale-95"
-                    title="Next Day"
-                >
-                    <ChevronRight size={20} />
-                </button>
+             
+             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full xl:w-auto">
+                 {/* View Mode Toggle */}
+                 <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
+                    <button 
+                        onClick={() => setFilterMode('daily')}
+                        className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${filterMode === 'daily' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        Daily Route
+                    </button>
+                    <button 
+                        onClick={() => setFilterMode('pending')}
+                        className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${filterMode === 'pending' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        Pending Cash
+                        {totalPendingAmount > 0 && <span className="w-2 h-2 rounded-full bg-red-500"></span>}
+                    </button>
+                 </div>
+
+                 {/* Date Navigator - Only show in Daily mode */}
+                 {filterMode === 'daily' && (
+                     <div className="flex items-center bg-slate-50 rounded-2xl border border-slate-200 p-1 w-full sm:w-auto justify-between sm:justify-start">
+                        <button 
+                            onClick={() => changeDate(-1)} 
+                            className="p-3 hover:bg-white hover:shadow-sm rounded-xl text-slate-500 transition-all active:scale-95"
+                            title="Previous Day"
+                        >
+                            <ChevronLeft size={20} />
+                        </button>
+                        <div className="relative mx-2 group">
+                            <div className="flex items-center gap-2 px-4 py-1 cursor-pointer">
+                                <Calendar size={16} className="text-indigo-600" />
+                                <span className="text-sm font-bold text-slate-700 whitespace-nowrap">
+                                    {formatDateDisplay(dateFilter)}
+                                </span>
+                            </div>
+                            <input 
+                                type="date"
+                                value={dateFilter}
+                                onChange={(e) => setDateFilter(e.target.value)}
+                                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                            />
+                        </div>
+                        <button 
+                            onClick={() => changeDate(1)} 
+                            className="p-3 hover:bg-white hover:shadow-sm rounded-xl text-slate-500 transition-all active:scale-95"
+                            title="Next Day"
+                        >
+                            <ChevronRight size={20} />
+                        </button>
+                     </div>
+                 )}
              </div>
 
              {/* Search & Add */}
@@ -386,7 +493,7 @@ export const Deliveries: React.FC = () => {
                     <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
                     <input 
                       type="text" 
-                      placeholder="Search deliveries..." 
+                      placeholder={filterMode === 'pending' ? "Search unpaid orders..." : "Search deliveries..."} 
                       className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -402,22 +509,46 @@ export const Deliveries: React.FC = () => {
              </div>
           </div>
 
+          {/* Pending Cash Summary Banner */}
+          {filterMode === 'pending' && filteredDeliveries.length > 0 && (
+              <div className="bg-red-50 border border-red-100 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-2">
+                 <div className="flex items-center gap-4">
+                     <div className="p-3 bg-white rounded-2xl border border-red-100 text-red-500 shadow-sm">
+                        <Wallet size={24} />
+                     </div>
+                     <div>
+                        <h3 className="font-bold text-red-900 text-lg">Outstanding Cash</h3>
+                        <p className="text-red-600/80 text-sm">Total pending collection from cash customers</p>
+                     </div>
+                 </div>
+                 <div className="text-3xl font-bold text-red-700 tracking-tight">
+                    ${totalPendingAmount.toFixed(2)}
+                 </div>
+              </div>
+          )}
+
           <div className="flex flex-col gap-3">
              {filteredDeliveries.length === 0 ? (
                <div className="bg-white rounded-3xl p-12 text-center text-slate-400 border border-slate-100 border-dashed mt-4">
                  <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                     <Package size={32} className="text-slate-300" />
                  </div>
-                 <p className="font-medium text-slate-600">No deliveries found for this date.</p>
-                 <button 
-                    onClick={() => {
-                        setDateFilter(getTodayString());
-                        setSearchTerm('');
-                    }}
-                    className="mt-4 text-indigo-600 font-bold text-sm hover:underline"
-                 >
-                    Reset to Today
-                 </button>
+                 <p className="font-medium text-slate-600">
+                     {filterMode === 'pending' 
+                        ? "Great job! No pending cash payments found." 
+                        : "No deliveries found for this date."}
+                 </p>
+                 {filterMode === 'daily' && (
+                    <button 
+                        onClick={() => {
+                            setDateFilter(getTodayString());
+                            setSearchTerm('');
+                        }}
+                        className="mt-4 text-indigo-600 font-bold text-sm hover:underline"
+                    >
+                        Reset to Today
+                    </button>
+                 )}
                </div>
              ) : (
                filteredDeliveries.map((delivery) => (
@@ -426,6 +557,7 @@ export const Deliveries: React.FC = () => {
                       delivery={delivery} 
                       onEdit={handleEdit}
                       onDelete={handleDeleteClick}
+                      onMarkPaid={handleMarkPaid}
                    />
                ))
              )}
@@ -454,7 +586,10 @@ export const Deliveries: React.FC = () => {
                         <div className="relative">
                             <select 
                                 value={selectedStoreId} 
-                                onChange={(e) => setSelectedStoreId(e.target.value)}
+                                onChange={(e) => {
+                                    setSelectedStoreId(e.target.value);
+                                    setCashReceived(true); // Reset when store changes
+                                }}
                                 className="w-full p-4 pl-4 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none cursor-pointer font-medium text-slate-700"
                             >
                                 <option value="">-- Choose Store --</option>
@@ -464,6 +599,40 @@ export const Deliveries: React.FC = () => {
                                 <ArrowRight size={16} className="rotate-90" />
                             </div>
                         </div>
+                        {selectedStore && (
+                            <div className="flex flex-col gap-3">
+                                <div className={`p-3 rounded-xl border flex items-center gap-2 text-sm font-semibold animate-in slide-in-from-top-1 ${selectedStore.paymentMethod === 'cash' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-blue-50 border-blue-100 text-blue-700'}`}>
+                                    {selectedStore.paymentMethod === 'cash' ? <Banknote size={16} /> : <CreditCard size={16} />}
+                                    <span>
+                                        Payment Terms: <span className="uppercase">{selectedStore.paymentMethod === 'cash' ? 'Cash on Delivery' : 'Monthly Credit'}</span>
+                                    </span>
+                                </div>
+                                
+                                {/* Cash Received Toggle */}
+                                {selectedStore.paymentMethod === 'cash' && (
+                                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200 animate-in slide-in-from-top-2">
+                                        <div className="flex items-center gap-2 text-slate-700">
+                                            <div className="p-2 bg-white rounded-lg border border-slate-200 shadow-sm text-green-600">
+                                                <DollarSign size={16} />
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-sm">Cash Collected?</p>
+                                                <p className="text-xs text-slate-500">Uncheck if store will pay later</p>
+                                            </div>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={cashReceived} 
+                                                onChange={(e) => setCashReceived(e.target.checked)}
+                                                className="sr-only peer" 
+                                            />
+                                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Product Selection */}

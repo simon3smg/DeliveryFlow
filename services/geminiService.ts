@@ -1,43 +1,38 @@
 import { GoogleGenAI } from "@google/genai";
 import { Delivery, Store } from "../types";
 
-const getClient = () => {
-  // Safe environment check for browser vs node
-  let apiKey = '';
-  try {
-    // Only access process if it is defined to avoid ReferenceError
-    if (typeof process !== 'undefined' && process.env) {
-        apiKey = process.env.API_KEY || '';
-    }
-  } catch (e) {
-    // Ignore errors in strict environments
-  }
-
-  if (!apiKey) {
-    // In a real deployed app, you might not want to log this warning to avoid noise if the feature is optional
-    // console.warn("API Key not found in environment variables");
-    return null;
-  }
-  return new GoogleGenAI({ apiKey });
-};
-
 export const generateDeliveryReportInsight = async (
   deliveries: Delivery[],
   stores: Store[],
   month: string
 ): Promise<string> => {
-  const client = getClient();
-  if (!client) return "AI insights are not available (API Key missing).";
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
   const storeNames = stores.map(s => s.name).join(", ");
   const deliveryCount = deliveries.length;
   const totalValue = deliveries.reduce((acc, d) => acc + d.items.reduce((s, i) => s + (i.priceAtDelivery * i.quantity), 0), 0);
+  
+  // Calculate specific totals including pending cash
+  const cashReceived = deliveries
+    .filter(d => d.paymentMethod === 'cash' && d.paymentStatus !== 'pending')
+    .reduce((acc, d) => acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0);
+
+  const pendingCash = deliveries
+    .filter(d => d.paymentMethod === 'cash' && d.paymentStatus === 'pending')
+    .reduce((acc, d) => acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0);
+
+  const creditGiven = deliveries
+    .filter(d => d.paymentMethod !== 'cash')
+    .reduce((acc, d) => acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0);
 
   // Simplified data for prompt to save tokens
   const summaryData = {
     month,
     totalDeliveries: deliveryCount,
     totalRevenue: totalValue.toFixed(2),
+    cashCollected: cashReceived.toFixed(2),
+    cashPendingCollection: pendingCash.toFixed(2),
+    creditGiven: creditGiven.toFixed(2),
     activeStores: storeNames,
     topItems: deliveries.flatMap(d => d.items).slice(0, 10) // Just a sample
   };
@@ -50,14 +45,14 @@ export const generateDeliveryReportInsight = async (
 
     Please provide a concise executive summary (max 150 words) highlighting:
     1. Overall performance.
-    2. Key revenue drivers.
+    2. Cash Flow analysis (Specifically note any significant pending cash collections).
     3. Any suggestions for optimization based on general retail logistics best practices.
     
     Keep the tone professional and encouraging.
   `;
 
   try {
-    const response = await client.models.generateContent({
+    const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: prompt,
     });

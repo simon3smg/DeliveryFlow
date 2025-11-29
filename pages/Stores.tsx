@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Store } from '../types';
 import { storageService } from '../services/storageService';
-import { Plus, Trash2, MapPin, Phone, Mail, Store as StoreIcon, X, Edit2, Loader2, AlertTriangle, ChevronRight } from 'lucide-react';
+import { Plus, Trash2, MapPin, Phone, Mail, Store as StoreIcon, X, Edit2, Loader2, AlertTriangle, ChevronRight, CreditCard, Banknote } from 'lucide-react';
 
 export const Stores: React.FC = () => {
   const [stores, setStores] = useState<Store[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingStore, setEditingStore] = useState<Partial<Store>>({});
+  const [editingStore, setEditingStore] = useState<Partial<Store>>({ paymentMethod: 'credit' });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [storeToDelete, setStoreToDelete] = useState<string | null>(null);
@@ -43,12 +43,13 @@ export const Stores: React.FC = () => {
                 address: editingStore.address!,
                 contactPerson: editingStore.contactPerson || '',
                 phone: editingStore.phone || '',
-                email: editingStore.email || ''
+                email: editingStore.email || '',
+                paymentMethod: editingStore.paymentMethod || 'credit'
             });
         }
         await loadStores();
         setIsModalOpen(false);
-        setEditingStore({});
+        setEditingStore({ paymentMethod: 'credit' });
     } catch (e) {
         alert("Error saving store");
     } finally {
@@ -80,6 +81,11 @@ export const Stores: React.FC = () => {
     }
   };
 
+  const openNewStoreModal = () => {
+      setEditingStore({ paymentMethod: 'credit' });
+      setIsModalOpen(true);
+  };
+
   if (loading) {
     return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={32}/></div>;
   }
@@ -92,7 +98,7 @@ export const Stores: React.FC = () => {
             <p className="text-slate-500">Manage your retail network locations</p>
         </div>
         <button 
-          onClick={() => { setEditingStore({}); setIsModalOpen(true); }}
+          onClick={openNewStoreModal}
           className="bg-indigo-600 text-white px-5 py-3 rounded-2xl flex items-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all active:scale-95"
         >
           <Plus size={20} /> <span className="font-semibold">Add Store</span>
@@ -118,7 +124,20 @@ export const Stores: React.FC = () => {
 
                 <h3 className="font-bold text-xl text-slate-800 mb-2 pr-4">{store.name}</h3>
                 
-                <div className="space-y-3 mt-4">
+                {/* Payment Badge */}
+                <div className="mb-4">
+                    {store.paymentMethod === 'cash' ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">
+                            <Banknote size={12} /> Cash Payment
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-600 border border-blue-100">
+                            <CreditCard size={12} /> Monthly Credit
+                        </span>
+                    )}
+                </div>
+
+                <div className="space-y-3">
                     <p className="flex items-start gap-3 text-sm text-slate-600 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
                         <MapPin size={16} className="text-indigo-500 mt-0.5 shrink-0" /> 
                         <span className="leading-snug">{store.address}</span>
@@ -173,6 +192,28 @@ export const Stores: React.FC = () => {
                     onChange={e => setEditingStore({...editingStore, address: e.target.value})}
                  />
               </div>
+              
+              {/* Payment Method Selector */}
+              <div className="space-y-2">
+                 <label className="text-xs font-bold text-slate-500 uppercase">Payment Terms</label>
+                 <div className="grid grid-cols-2 gap-4">
+                    <button 
+                        onClick={() => setEditingStore({...editingStore, paymentMethod: 'credit'})}
+                        className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${editingStore.paymentMethod === 'credit' ? 'bg-indigo-50 border-indigo-500 text-indigo-700 ring-1 ring-indigo-500' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+                    >
+                        <CreditCard size={20} />
+                        <span className="text-xs font-bold">Credit Account</span>
+                    </button>
+                    <button 
+                        onClick={() => setEditingStore({...editingStore, paymentMethod: 'cash'})}
+                        className={`p-3 rounded-xl border flex flex-col items-center gap-2 transition-all ${editingStore.paymentMethod === 'cash' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 ring-1 ring-emerald-500' : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'}`}
+                    >
+                        <Banknote size={20} />
+                        <span className="text-xs font-bold">Cash on Delivery</span>
+                    </button>
+                 </div>
+              </div>
+
               <div className="space-y-2">
                  <label className="text-xs font-bold text-slate-500 uppercase">Contact Person</label>
                  <input 
