@@ -1,27 +1,63 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import { storageService } from '../services/storageService';
-import { DriverLocation } from '../types';
+import { DriverLocation, Store } from '../types';
 import { Navigation } from 'lucide-react';
 
 // Declare Leaflet global type for CDN usage
 declare const L: any;
+
+const FACTORY_LOCATION = {
+  lat: 53.5706,
+  lng: -113.4682,
+  address: "8612 118th Avenue Northwest, Edmonton, Alberta, Canada",
+  name: "Factory"
+};
+
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a = 
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * 
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+}
 
 export const LiveMap: React.FC = () => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<any>(null);
   const markersRef = useRef<{ [key: string]: any }>({});
   const polylinesRef = useRef<{ [key: string]: any }>({});
+  const isMountedRef = useRef(true);
   
   const [drivers, setDrivers] = useState<DriverLocation[]>([]);
   const [lastUpdate, setLastUpdate] = useState(Date.now());
 
   // Initialize Map
   useEffect(() => {
-    if (!mapRef.current || mapInstance.current) return;
-
-    // Center on Edmonton Distribution Ctr: 53.5706, -113.4682
-    const map = L.map(mapRef.current).setView([53.5706, -113.4682], 12);
+    isMountedRef.current = true;
     
+    // Check if container exists
+    if (!mapRef.current) return;
+
+    // Cleanup existing instance if any (strict mode safe)
+    if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+        markersRef.current = {};
+        polylinesRef.current = {};
+    }
+
+    // Center on Factory
+    const map = L.map(mapRef.current, {
+        zoomControl: false // We can add it manually if needed, or keep default
+    }).setView([FACTORY_LOCATION.lat, FACTORY_LOCATION.lng], 12);
+    
+    L.control.zoom({ position: 'topleft' }).addTo(map);
+
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap &copy; CARTO',
       subdomains: 'abcd',
@@ -30,22 +66,115 @@ export const LiveMap: React.FC = () => {
 
     mapInstance.current = map;
 
-    // Add Stores to map (Async load)
+    // --- Add Factory Marker ---
+    const factoryIcon = L.divIcon({
+        className: 'bg-emerald-600 w-6 h-6 rounded-md border-2 border-white shadow-xl flex items-center justify-center text-white relative z-[1000]',
+        html: `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4 8 4v14"/><path d="M17 21v-8H7v8"/></svg>`,
+        iconSize: [24, 24],
+        iconAnchor: [12, 24],
+        popupAnchor: [0, -24]
+    });
+
+    const factoryMarker = L.marker([FACTORY_LOCATION.lat, FACTORY_LOCATION.lng], { icon: factoryIcon, zIndexOffset: 1000 })
+      .addTo(map)
+      .bindPopup(`
+        <div class="p-2 min-w-[200px] font-sans">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="bg-emerald-600 text-white p-1 rounded-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4 8 4v14"/><path d="M17 21v-8H7v8"/></svg>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-900 leading-tight">Factory / Distribution Center</h3>
+                    <p class="text-[10px] text-slate-500 font-medium">Origin Point</p>
+                </div>
+            </div>
+            <p class="text-xs text-slate-600 border-t border-slate-100 pt-2 leading-relaxed">${FACTORY_LOCATION.address}</p>
+        </div>
+      `);
+
+    // --- Geocoding Helper ---
+    const geocodeAddress = async (address: string) => {
+        try {
+            // Force Edmonton context
+            let searchAddress = address;
+            if (!searchAddress.toLowerCase().includes('edmonton')) {
+                searchAddress += ", Edmonton, Alberta, Canada";
+            } else if (!searchAddress.toLowerCase().includes('canada')) {
+                searchAddress += ", Canada";
+            }
+
+            const query = encodeURIComponent(searchAddress);
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&viewbox=-113.713,53.666,-113.293,53.400&bounded=1&limit=1`);
+            const data = await response.json();
+            if (data && data.length > 0) {
+                return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+            }
+        } catch (e) {
+            console.warn("Geocoding failed for", address);
+        }
+        return null;
+    };
+
+    // --- Add Stores to map (Async load) ---
     const loadStores = async () => {
         try {
             const stores = await storageService.getStores();
-            stores.forEach(store => {
-                if (store.lat && store.lng) {
-                    L.marker([store.lat, store.lng], {
-                    icon: L.divIcon({
-                        className: 'bg-emerald-600 w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white font-bold text-xs',
-                        html: 'S',
-                        iconSize: [24, 24]
-                    })
-                    }).bindPopup(`<b>${store.name}</b><br>${store.address}`)
-                    .addTo(map);
+            if (!isMountedRef.current || !mapInstance.current) return;
+            
+            for (const store of stores) {
+                if (!isMountedRef.current || !mapInstance.current) return;
+
+                let { lat, lng } = store;
+                
+                // If coordinates are missing, try to geocode
+                if (!lat || !lng) {
+                     if (store.address) {
+                        const coords = await geocodeAddress(store.address);
+                        if (coords) {
+                            lat = coords.lat;
+                            lng = coords.lng;
+                        }
+                     }
                 }
-            });
+
+                if (!lat || !lng) continue;
+
+                // Check overlap with factory
+                const distToFactory = calculateDistance(lat, lng, FACTORY_LOCATION.lat, FACTORY_LOCATION.lng);
+                const isFactory = distToFactory < 0.1;
+
+                if (!isFactory && isMountedRef.current && mapInstance.current) {
+                    const distDisplay = distToFactory.toFixed(1);
+                    
+                    L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        className: 'bg-indigo-600 w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white font-bold text-xs hover:scale-110 transition-transform',
+                        html: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 24],
+                        popupAnchor: [0, -24]
+                    })
+                    }).bindPopup(`
+                        <div class="p-2 min-w-[180px] font-sans">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="bg-indigo-100 text-indigo-700 p-0.5 px-1.5 rounded text-[10px] font-bold uppercase tracking-wider">Store</span>
+                            </div>
+                            <h3 class="font-bold text-slate-900 text-sm mb-1">${store.name}</h3>
+                            <p class="text-xs text-slate-500 mb-2 leading-tight">${store.address}</p>
+                            
+                            <div class="space-y-1 border-t border-slate-100 pt-2 mt-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-[10px] font-bold text-slate-400 uppercase">Distance</span>
+                                    <span class="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                        ${distDisplay} km
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    `)
+                    .addTo(mapInstance.current); // Use current instance ref
+                }
+            }
         } catch (e) {
             console.error("Failed to load map stores", e);
         }
@@ -53,31 +182,46 @@ export const LiveMap: React.FC = () => {
     loadStores();
 
     return () => {
-      map.remove();
-      mapInstance.current = null;
+      isMountedRef.current = false;
+      if (mapInstance.current) {
+          mapInstance.current.remove();
+          mapInstance.current = null;
+      }
+      markersRef.current = {};
+      polylinesRef.current = {};
     };
   }, []);
 
   // Poll for driver updates
   useEffect(() => {
+    // Only start polling if component is mounted
+    let active = true;
     const interval = setInterval(async () => {
-      // SimulateDriverMovement is now async (might fetch stores)
-      const updatedDrivers = await storageService.simulateDriverMovement();
-      setDrivers([...updatedDrivers]); 
-      setLastUpdate(Date.now());
-    }, 2000); // 2 second updates
+      if (!active) return;
+      try {
+        const updatedDrivers = await storageService.simulateDriverMovement();
+        if (active) {
+            setDrivers([...updatedDrivers]); 
+            setLastUpdate(Date.now());
+        }
+      } catch (e) {
+          console.error("Driver sync error", e);
+      }
+    }, 2000); 
 
-    return () => clearInterval(interval);
+    return () => { active = false; clearInterval(interval); };
   }, []);
 
-  // Update Markers
+  // Update Driver Markers
   useEffect(() => {
-    if (!mapInstance.current) return;
+    if (!mapInstance.current || !isMountedRef.current) return;
     const map = mapInstance.current;
 
     drivers.forEach(driver => {
       // 1. Update or Create Marker
       if (markersRef.current[driver.driverId]) {
+        // Check if marker is still on map? (It should be if map wasn't destroyed)
+        
         // Smoothly move marker
         markersRef.current[driver.driverId].setLatLng([driver.lat, driver.lng]);
         
@@ -94,13 +238,19 @@ export const LiveMap: React.FC = () => {
             </div>
           </div>
         `;
-        markersRef.current[driver.driverId].setPopupContent(popupContent);
+        
+        // Only set content if popup exists, otherwise bind it
+        if (markersRef.current[driver.driverId].getPopup()) {
+             markersRef.current[driver.driverId].setPopupContent(popupContent);
+        } else {
+             markersRef.current[driver.driverId].bindPopup(popupContent);
+        }
 
       } else {
         // Create new marker
         const icon = L.divIcon({
-          className: 'bg-indigo-600 w-10 h-10 rounded-full border-4 border-white shadow-xl flex items-center justify-center text-white',
-          html: '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>',
+          className: 'bg-blue-600 w-8 h-8 rounded-full border-2 border-white shadow-xl flex items-center justify-center text-white',
+          html: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>',
           iconSize: [32, 32],
           iconAnchor: [16, 16],
           popupAnchor: [0, -16]
@@ -122,10 +272,11 @@ export const LiveMap: React.FC = () => {
           polylinesRef.current[driver.driverId].setLatLngs(trailCoords);
         } else {
           const polyline = L.polyline(trailCoords, { 
-            color: '#4f46e5', // indigo-600 
-            weight: 4, 
-            opacity: 0.5,
-            lineCap: 'round'
+            color: '#2563eb', // blue-600 
+            weight: 3, 
+            opacity: 0.6,
+            lineCap: 'round',
+            dashArray: '5, 10'
           }).addTo(map);
           polylinesRef.current[driver.driverId] = polyline;
         }
@@ -147,11 +298,11 @@ export const LiveMap: React.FC = () => {
        </div>
        
        <div className="flex-1 relative rounded-2xl overflow-hidden border border-slate-200 shadow-inner">
-           <div ref={mapRef} className="absolute inset-0 z-0" />
+           <div ref={mapRef} className="absolute inset-0 z-0 bg-slate-50" />
        </div>
        
        {/* Driver Legend / Quick List */}
-       <div className="grid grid-cols-2 gap-4 pt-2">
+       <div className="grid grid-cols-2 gap-4 pt-2 overflow-y-auto max-h-32">
           {drivers.map(d => (
             <div key={d.driverId} className="bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 rounded-xl p-3 text-xs flex items-center justify-between cursor-pointer transition-colors"
               onClick={() => {
@@ -161,16 +312,23 @@ export const LiveMap: React.FC = () => {
                  }
               }}
             >
-               <div>
-                 <p className="font-bold text-slate-800 text-sm">{d.driverName}</p>
-                 <p className="text-slate-500 mt-0.5">{d.status} • {d.speed.toFixed(0)} km/h</p>
+               <div className="flex items-center gap-2">
+                 <div className="w-2 h-2 rounded-full bg-blue-600"></div>
+                 <div>
+                    <p className="font-bold text-slate-800 text-sm">{d.driverName}</p>
+                    <p className="text-slate-500 mt-0.5">{d.status}</p>
+                 </div>
                </div>
                <div className="text-right">
-                  <p className="text-indigo-600 font-bold">{d.eta || '-'}</p>
-                  <p className="text-[10px] text-slate-400">to {d.nextStopName?.split(' ')[0] || 'Unknown'}</p>
+                  <p className="text-indigo-600 font-bold">{d.speed.toFixed(0)} km/h</p>
                </div>
             </div>
           ))}
+          {drivers.length === 0 && (
+              <div className="col-span-2 text-center text-slate-400 text-xs py-2">
+                  Waiting for drivers to connect...
+              </div>
+          )}
        </div>
     </div>
   );
