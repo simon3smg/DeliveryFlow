@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Truck, Package, DollarSign, Store as StoreIcon, TrendingUp, MoreHorizontal, Loader2 } from 'lucide-react';
+import { Truck, Package, DollarSign, Store as StoreIcon, TrendingUp, MoreHorizontal, Loader2, CheckCircle, AlertCircle, MapPin, ArrowRight } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Delivery, Store } from '../types';
 import { LiveMap } from '../components/LiveMap';
+import { useNavigate } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,6 +36,25 @@ export const Dashboard: React.FC = () => {
           </div>
       )
   }
+
+  // --- Notification / Schedule Logic ---
+  const getDailyProgress = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // Get IDs of stores visited today
+    const visitedStoreIds = new Set(
+        deliveries
+        .filter(d => d.timestamp.startsWith(todayStr))
+        .map(d => d.storeId)
+    );
+
+    const pendingStores = stores.filter(s => !visitedStoreIds.has(s.id));
+    return { pending: pendingStores, visitedCount: visitedStoreIds.size, total: stores.length };
+  };
+
+  const { pending, visitedCount, total } = getDailyProgress();
+  const progress = total > 0 ? (visitedCount / total) * 100 : 0;
+  // -------------------------------------
 
   const totalRevenue = deliveries.reduce((acc, d) => {
     return acc + d.items.reduce((sum, item) => sum + (item.quantity * item.priceAtDelivery), 0);
@@ -78,7 +99,77 @@ export const Dashboard: React.FC = () => {
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20 md:pb-0">
+      
+      {/* Notification / Daily Route System */}
+      <div className="bg-slate-900 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl shadow-slate-200">
+         {/* Background decoration */}
+         <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+
+         <div className="relative z-10">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+               <div>
+                  <h2 className="text-2xl font-bold flex items-center gap-2">
+                    {pending.length > 0 ? <AlertCircle className="text-amber-400" /> : <CheckCircle className="text-emerald-400" />}
+                    Daily Route Status
+                  </h2>
+                  <p className="text-slate-400 text-sm mt-1">Rule: Deliver to every store at least once daily.</p>
+               </div>
+               <div className="bg-white/10 px-4 py-2 rounded-xl backdrop-blur-sm border border-white/10">
+                  <span className="text-sm text-slate-300 mr-2">Progress</span>
+                  <span className="font-mono font-bold text-xl">{visitedCount}/{total}</span>
+               </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="w-full bg-slate-800 h-3 rounded-full mb-6 overflow-hidden">
+               <div 
+                  className={`h-full rounded-full transition-all duration-1000 ease-out ${progress === 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`} 
+                  style={{ width: `${progress}%` }}
+               ></div>
+            </div>
+
+            {pending.length === 0 ? (
+               <div className="flex items-center gap-3 text-emerald-300 bg-emerald-900/20 p-4 rounded-xl border border-emerald-500/20 animate-in slide-in-from-bottom-2">
+                  <CheckCircle className="shrink-0" size={24} />
+                  <div>
+                    <span className="font-bold block text-lg">Route Complete!</span>
+                    <span className="text-sm text-emerald-400/80">You have visited all {total} stores today. Great job!</span>
+                  </div>
+               </div>
+            ) : (
+               <div className="space-y-4">
+                  <div className="flex justify-between items-end">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">Pending Visits ({pending.length})</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                     {pending.map(store => (
+                        <div 
+                            key={store.id} 
+                            onClick={() => navigate('/deliveries', { state: { preSelectStoreId: store.id }})} 
+                            className="bg-white/5 hover:bg-white/10 p-4 rounded-xl flex items-center justify-between cursor-pointer transition-colors border border-white/5 group active:scale-95"
+                            role="button"
+                            aria-label={`Start delivery for ${store.name}`}
+                        >
+                           <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0">
+                                <MapPin size={14} className="text-indigo-300" />
+                              </div>
+                              <div className="min-w-0">
+                                <span className="font-bold text-sm block truncate text-slate-200">{store.name}</span>
+                                <span className="text-xs text-slate-500 truncate block">{store.address.split(',')[0]}</span>
+                              </div>
+                           </div>
+                           <ArrowRight size={16} className="text-indigo-400 group-hover:translate-x-1 transition-transform opacity-0 group-hover:opacity-100" />
+                        </div>
+                     ))}
+                  </div>
+               </div>
+            )}
+         </div>
+      </div>
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 

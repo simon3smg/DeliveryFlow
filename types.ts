@@ -33,7 +33,7 @@ export interface Delivery {
   timestamp: string; // ISO string
   driverName: string;
   items: DeliveryItem[];
-  signatureDataUrl: string; // Base64 image of signature
+  signatureDataUrl?: string; // Base64 image of signature (Optional)
   notes?: string;
   status: 'completed' | 'pending';
   paymentMethod: 'cash' | 'credit';

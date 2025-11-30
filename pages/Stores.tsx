@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Store } from '../types';
 import { storageService } from '../services/storageService';
@@ -91,7 +92,7 @@ export const Stores: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-20 md:pb-0">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
             <h2 className="text-2xl font-bold text-slate-800">Stores</h2>
@@ -99,7 +100,7 @@ export const Stores: React.FC = () => {
         </div>
         <button 
           onClick={openNewStoreModal}
-          className="bg-indigo-600 text-white px-5 py-3 rounded-2xl flex items-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all active:scale-95"
+          className="bg-indigo-600 text-white px-5 py-3 rounded-2xl flex items-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all active:scale-95 w-full sm:w-auto justify-center"
         >
           <Plus size={20} /> <span className="font-semibold">Add Store</span>
         </button>
@@ -168,14 +169,14 @@ export const Stores: React.FC = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-300 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 sm:zoom-in duration-300 max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                 <h3 className="text-xl font-bold text-slate-800">{editingStore.id ? 'Edit Store' : 'New Store'}</h3>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={20} /></button>
             </div>
             
-            <div className="p-8 space-y-5">
+            <div className="p-6 sm:p-8 space-y-5">
               <div className="space-y-2">
                  <label className="text-xs font-bold text-slate-500 uppercase">Store Name</label>
                  <input 

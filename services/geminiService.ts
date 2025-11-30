@@ -1,5 +1,6 @@
-import { GoogleGenAI } from "@google/genai";
-import { Delivery, Store } from "../types";
+
+import { GoogleGenAI, Type } from "@google/genai";
+import { Delivery, Store, Product } from "../types";
 
 export const generateDeliveryReportInsight = async (
   deliveries: Delivery[],

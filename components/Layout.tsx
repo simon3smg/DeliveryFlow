@@ -7,8 +7,6 @@ import {
   Store as StoreIcon, 
   Package, 
   FileText, 
-  Menu,
-  X,
   Bell,
   Search,
   LogOut,
@@ -16,7 +14,7 @@ import {
   Wifi,
   WifiOff
 } from 'lucide-react';
-import { storageService, isFirebaseConfigured } from '../services/storageService';
+import { storageService } from '../services/storageService';
 import { User as UserType } from '../types';
 
 interface LayoutProps {
@@ -24,16 +22,10 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   const [isOnline, setIsOnline] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-
-  // Close sidebar on route change (mobile)
-  useEffect(() => {
-    setIsSidebarOpen(false);
-  }, [location]);
 
   // Check Dark Mode Preference on Mount
   useEffect(() => {
@@ -92,7 +84,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   }
 
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
+    { path: '/', label: 'Home', icon: <LayoutDashboard size={20} /> },
     { path: '/deliveries', label: 'Deliveries', icon: <Truck size={20} /> },
     { path: '/stores', label: 'Stores', icon: <StoreIcon size={20} /> },
     { path: '/products', label: 'Products', icon: <Package size={20} /> },
@@ -106,14 +98,11 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
   };
 
   return (
-    <div className="w-full min-h-screen flex bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+    <div className="w-full min-h-screen flex bg-slate-50 dark:bg-slate-950 transition-colors duration-300 font-sans">
       
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <aside 
-        className={`
-          fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-white transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 no-print flex flex-col shadow-2xl border-r border-slate-800
-          ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-        `}
+        className="hidden md:flex w-72 bg-slate-900 text-white flex-col shadow-2xl border-r border-slate-800 shrink-0 h-screen sticky top-0"
       >
         {/* Brand */}
         <div className="p-8 pb-4">
@@ -153,7 +142,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* User Profile Footer */}
         <div className="p-4 border-t border-slate-800 space-y-4">
-           
            {/* Connection Status Badge */}
            <div className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 ${isOnline ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
                {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
@@ -191,24 +179,24 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       </aside>
 
       {/* Main Content Wrapper */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative">
         
-        {/* Mobile Header */}
-        <div className="md:hidden bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 p-4 flex justify-between items-center no-print">
-          <div className="flex items-center gap-3">
-             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 -ml-2 text-slate-600 dark:text-slate-300">
-               {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
-             </button>
-             <h1 className="font-bold text-lg text-slate-800 dark:text-white">{getPageTitle()}</h1>
+        {/* Mobile Header - Simplified */}
+        <div className="md:hidden bg-white/90 backdrop-blur-md dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex justify-between items-center no-print sticky top-0 z-30">
+          <div className="flex items-center gap-2">
+             <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-500/30">
+                <Truck className="text-white" size={16} /> 
+             </div>
+             <h1 className="font-bold text-lg text-slate-800 dark:text-white tracking-tight">{getPageTitle()}</h1>
           </div>
           <div 
-            className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-600 dark:text-indigo-200 flex items-center justify-center font-bold text-xs overflow-hidden cursor-pointer"
+            className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-indigo-300 flex items-center justify-center font-bold text-xs overflow-hidden cursor-pointer shadow-sm active:scale-95 transition-transform"
             onClick={() => navigate('/settings')}
           >
             {currentUser?.avatar ? (
               <img src={currentUser.avatar} alt="User" className="w-full h-full object-cover" />
             ) : (
-              currentUser?.name?.charAt(0)
+              currentUser?.name?.charAt(0) || <User size={16}/>
             )}
           </div>
         </div>
@@ -237,21 +225,35 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Scrollable Main Content */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 scroll-smooth">
-          <div className="w-full pb-10 mx-auto">
+        {/* Added padding bottom on mobile to account for Bottom Nav */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 pb-24 md:p-6 lg:p-8 md:pb-10 scroll-smooth">
+          <div className="w-full mx-auto max-w-7xl">
             {children}
           </div>
         </main>
 
-      </div>
+        {/* Mobile Bottom Navigation */}
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-around items-center px-2 py-2 pb-safe z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+           {navItems.map((item) => (
+             <NavLink
+               key={item.path}
+               to={item.path}
+               className={({ isActive }) => `
+                 flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-all w-16
+                 ${isActive 
+                   ? 'text-indigo-600 dark:text-indigo-400 font-bold' 
+                   : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}
+               `}
+             >
+               <div className={({ isActive }: any) => isActive ? "transform scale-110 transition-transform" : ""}>
+                 {item.icon}
+               </div>
+               <span className="text-[10px] font-medium tracking-tight truncate w-full text-center">{item.label}</span>
+             </NavLink>
+           ))}
+        </nav>
 
-      {/* Overlay for mobile sidebar */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-40 md:hidden transition-opacity"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
+      </div>
     </div>
   );
 };

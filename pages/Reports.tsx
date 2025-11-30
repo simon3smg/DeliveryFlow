@@ -562,7 +562,7 @@ export const Reports: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8 print:hidden animate-in fade-in duration-500">
+    <div className="space-y-8 print:hidden animate-in fade-in duration-500 pb-20 md:pb-0">
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full xl:w-auto">
              <div>
@@ -647,7 +647,53 @@ export const Reports: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+          <h3 className="font-bold text-lg text-slate-800 px-2">{timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Breakdown</h3>
+          {deliveriesByStore.length === 0 ? (
+             <div className="p-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-100">No data available</div>
+          ) : (
+             deliveriesByStore.map(store => (
+                <div key={store.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+                    <div className="flex justify-between items-center">
+                        <h4 className="font-bold text-slate-800">{store.name}</h4>
+                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs">{store.deliveryCount} Drops</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div className="bg-emerald-50 p-2 rounded-lg">
+                            <p className="text-emerald-600 font-medium">Cash</p>
+                            <p className="text-emerald-700 font-bold">${store.cashReceived.toFixed(0)}</p>
+                        </div>
+                        <div className="bg-amber-50 p-2 rounded-lg">
+                            <p className="text-amber-600 font-medium">Pending</p>
+                            <p className="text-amber-700 font-bold">${store.cashPending.toFixed(0)}</p>
+                        </div>
+                        <div className="bg-blue-50 p-2 rounded-lg">
+                            <p className="text-blue-600 font-medium">Credit</p>
+                            <p className="text-blue-700 font-bold">${store.creditGiven.toFixed(0)}</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                        <button 
+                            onClick={() => handleOpenInvoice(store)}
+                            className="flex-1 py-2 bg-slate-50 text-slate-600 font-bold text-xs rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                        >
+                            <FileText size={14} /> Invoice
+                        </button>
+                        <button 
+                            onClick={() => handleOpenStatement(store)}
+                            className="flex-1 py-2 bg-slate-50 text-slate-600 font-bold text-xs rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                        >
+                            <CreditCard size={14} /> Statement
+                        </button>
+                    </div>
+                </div>
+             ))
+          )}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="p-6 border-b border-slate-50 bg-slate-50/30">
             <h3 className="font-bold text-lg text-slate-800">{timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Store Breakdown</h3>
         </div>
@@ -710,4 +756,3 @@ export const Reports: React.FC = () => {
     </div>
   );
 };
-    

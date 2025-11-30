@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { Product } from '../types';
 import { storageService } from '../services/storageService';
-import { Plus, Trash2, Package, Search, X, Edit2, Loader2, AlertTriangle, Tag } from 'lucide-react';
+import { Plus, Trash2, Package, Search, X, Edit2, Loader2, AlertTriangle, Tag, ChevronRight } from 'lucide-react';
 
 export const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
@@ -70,9 +71,9 @@ export const Products: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm sticky top-0 z-10 md:static">
         <div className="relative w-full sm:w-96">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
             <input 
@@ -86,11 +87,36 @@ export const Products: React.FC = () => {
           onClick={() => { setEditingProduct({}); setIsModalOpen(true); }}
           className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all font-medium active:scale-95"
         >
-          <Plus size={18} /> Add Product
+          <Plus size={18} /> <span className="hidden sm:inline">Add Product</span><span className="sm:hidden">Add</span>
         </button>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
+      {/* Mobile Card View */}
+      <div className="md:hidden space-y-4">
+        {filteredProducts.map(product => (
+          <div key={product.id} onClick={() => { setEditingProduct({...product}); setIsModalOpen(true); }} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm active:scale-98 transition-transform flex items-center justify-between">
+             <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
+                    <Package size={20} />
+                </div>
+                <div>
+                    <h3 className="font-bold text-slate-800">{product.name}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">{product.sku}</span>
+                        <span className="text-xs font-medium text-slate-400">{product.unit}</span>
+                    </div>
+                </div>
+             </div>
+             <div className="flex flex-col items-end gap-1">
+                 <span className="font-bold text-slate-800 text-lg">${product.price.toFixed(2)}</span>
+                 <ChevronRight size={16} className="text-slate-300" />
+             </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop Table View */}
+      <div className="hidden md:block bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-100">
                 <tr>
@@ -132,34 +158,49 @@ export const Products: React.FC = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 animate-in zoom-in duration-200">
-             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-slate-800">{editingProduct.id ? 'Edit Product' : 'New Product'}</h3>
-                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full"><X size={20} /></button>
-            </div>
-            
-            <div className="space-y-5">
-              <div className="space-y-2">
-                 <label className="text-xs font-bold text-slate-500 uppercase">Name</label>
-                 <input className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" value={editingProduct.name || ''} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 sm:zoom-in duration-300">
+             <div className="p-6 sm:p-8 flex flex-col gap-6 max-h-[85vh] overflow-y-auto">
+                 <div className="flex justify-between items-center">
+                    <h3 className="text-xl font-bold text-slate-800">{editingProduct.id ? 'Edit Product' : 'New Product'}</h3>
+                    <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-full"><X size={20} /></button>
+                </div>
+                
+                <div className="space-y-5">
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase">Price</label>
-                    <input type="number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" value={editingProduct.price || ''} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value)})} />
+                    <label className="text-xs font-bold text-slate-500 uppercase">Name</label>
+                    <input className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" value={editingProduct.name || ''} onChange={e => setEditingProduct({...editingProduct, name: e.target.value})} placeholder="e.g. Organic Milk"/>
                 </div>
-                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 uppercase">Unit</label>
-                    <input className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" value={editingProduct.unit || ''} onChange={e => setEditingProduct({...editingProduct, unit: e.target.value})} />
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Price</label>
+                        <input type="number" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" value={editingProduct.price || ''} onChange={e => setEditingProduct({...editingProduct, price: parseFloat(e.target.value)})} placeholder="0.00"/>
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Unit</label>
+                        <input className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" value={editingProduct.unit || ''} onChange={e => setEditingProduct({...editingProduct, unit: e.target.value})} placeholder="box, kg..."/>
+                    </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                 <label className="text-xs font-bold text-slate-500 uppercase">SKU</label>
-                 <input className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" value={editingProduct.sku || ''} onChange={e => setEditingProduct({...editingProduct, sku: e.target.value})} />
-              </div>
-              <button onClick={handleSave} disabled={saving} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg mt-4 flex justify-center gap-2">{saving && <Loader2 className="animate-spin" size={20}/>} Save Product</button>
-            </div>
+                <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-500 uppercase">SKU</label>
+                    <input className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none" value={editingProduct.sku || ''} onChange={e => setEditingProduct({...editingProduct, sku: e.target.value})} placeholder="OPTIONAL-SKU"/>
+                </div>
+
+                <div className="pt-2 gap-3 flex flex-col sm:flex-row">
+                    {editingProduct.id && (
+                        <button 
+                            onClick={() => setProductToDelete(editingProduct.id)} 
+                            className="w-full py-3 border border-red-100 text-red-500 rounded-xl font-bold hover:bg-red-50 transition-colors sm:hidden"
+                        >
+                            Delete Product
+                        </button>
+                    )}
+                    <button onClick={handleSave} disabled={saving} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg flex justify-center gap-2 items-center">
+                        {saving && <Loader2 className="animate-spin" size={20}/>} Save Product
+                    </button>
+                </div>
+                </div>
+             </div>
           </div>
         </div>
       )}

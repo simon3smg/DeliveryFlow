@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, MapPin, Package, X, Trash2, CheckCircle, ArrowRight, User, Store as StoreIcon, Loader2, Calendar, Edit2, ChevronLeft, ChevronRight, Clock, ChevronDown, ChevronUp, AlertTriangle, CreditCard, Banknote, DollarSign, Wallet } from 'lucide-react';
+import { Plus, Search, MapPin, Package, X, Trash2, CheckCircle, ArrowRight, User, Store as StoreIcon, Loader2, Calendar, Edit2, ChevronLeft, ChevronRight, Clock, ChevronDown, ChevronUp, AlertTriangle, CreditCard, Banknote, DollarSign, Wallet, Minus } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Delivery, Store, Product, DeliveryItem, User as UserType } from '../types';
 import { SignaturePad } from '../components/SignaturePad';
+import { useLocation } from 'react-router-dom';
 
 // --- Sub-component for individual delivery card ---
 const DeliveryCard: React.FC<{ 
@@ -174,6 +175,8 @@ export const Deliveries: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   const [deliveryToDelete, setDeliveryToDelete] = useState<string | null>(null);
   
+  const location = useLocation();
+
   // Helpers for date string YYYY-MM-DD
   const getTodayString = () => {
     const now = new Date();
@@ -215,6 +218,25 @@ export const Deliveries: React.FC = () => {
     return () => unsub();
   }, []);
 
+  // Handle Navigation from Dashboard Notifications
+  useEffect(() => {
+    if (location.state && (location.state as any).preSelectStoreId) {
+        const preSelectedId = (location.state as any).preSelectStoreId;
+        resetForm();
+        setSelectedStoreId(preSelectedId);
+        setView('create');
+        // Clear history state to prevent re-triggering on simple reload
+        window.history.replaceState({}, document.title);
+    }
+  }, [location]);
+
+  // Set default product when products load or view changes
+  useEffect(() => {
+    if ((view === 'create' || view === 'edit') && products.length > 0 && !selectedProductId) {
+        setSelectedProductId(products[0].id);
+    }
+  }, [view, products, selectedProductId]);
+
   const refreshData = async () => {
     setLoading(true);
     try {
@@ -255,7 +277,13 @@ export const Deliveries: React.FC = () => {
     };
 
     setCart([...cart, newItem]);
-    setSelectedProductId('');
+    
+    // Reset defaults
+    if (products.length > 0) {
+        setSelectedProductId(products[0].id);
+    } else {
+        setSelectedProductId('');
+    }
     setQuantity(1);
   };
 
@@ -271,7 +299,7 @@ export const Deliveries: React.FC = () => {
       setEditingId(delivery.id);
       setSelectedStoreId(delivery.storeId);
       setCart(delivery.items);
-      setSignature(delivery.signatureDataUrl);
+      setSignature(delivery.signatureDataUrl || null);
       setNotes(delivery.notes || '');
       // If it's a cash delivery and status is NOT paid (i.e. pending), then cashReceived is false.
       // Default to true for paid or undefined (legacy).
@@ -326,8 +354,8 @@ export const Deliveries: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-    if (!selectedStoreId || cart.length === 0 || !signature) {
-      alert("Please complete all fields and sign.");
+    if (!selectedStoreId || cart.length === 0) {
+      alert("Please select a store and add items.");
       return;
     }
 
@@ -348,15 +376,12 @@ export const Deliveries: React.FC = () => {
     }
 
     // Determine payment status
-    // Cash + Received = 'paid'
-    // Cash + Not Received = 'pending'
-    // Credit = 'pending' (but reports handle this by method type)
     let paymentStatus: 'paid' | 'pending' = 'pending';
     
     if (store?.paymentMethod === 'cash') {
         paymentStatus = cashReceived ? 'paid' : 'pending';
     } else {
-        paymentStatus = 'pending'; // Credit is always collected later (end of month)
+        paymentStatus = 'pending'; // Credit is always collected later
     }
 
     const payload: Delivery = {
@@ -365,7 +390,7 @@ export const Deliveries: React.FC = () => {
       storeName: store?.name || 'Unknown Store',
       driverName,
       items: cart,
-      signatureDataUrl: signature,
+      signatureDataUrl: signature || '',
       notes,
       timestamp,
       status: 'completed',
@@ -397,6 +422,11 @@ export const Deliveries: React.FC = () => {
     setSignature(null);
     setNotes('');
     setCashReceived(true);
+    if (products.length > 0) {
+        setSelectedProductId(products[0].id);
+    } else {
+        setSelectedProductId('');
+    }
   };
 
   const filteredDeliveries = deliveries.filter(d => {
@@ -428,24 +458,24 @@ export const Deliveries: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-20 md:pb-0">
       
       {view === 'list' && (
         <>
-          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm sticky top-0 z-20">
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm sticky top-0 z-20 md:static">
              
              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full xl:w-auto">
                  {/* View Mode Toggle */}
-                 <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
+                 <div className="flex bg-slate-100 p-1 rounded-xl shrink-0 w-full sm:w-auto">
                     <button 
                         onClick={() => setFilterMode('daily')}
-                        className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${filterMode === 'daily' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${filterMode === 'daily' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
                         Daily Route
                     </button>
                     <button 
                         onClick={() => setFilterMode('pending')}
-                        className={`px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center gap-2 ${filterMode === 'pending' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${filterMode === 'pending' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
                         Pending Cash
                         {totalPendingAmount > 0 && <span className="w-2 h-2 rounded-full bg-red-500"></span>}
@@ -493,7 +523,7 @@ export const Deliveries: React.FC = () => {
                     <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-slate-400" size={18} />
                     <input 
                       type="text" 
-                      placeholder={filterMode === 'pending' ? "Search unpaid orders..." : "Search deliveries..."} 
+                      placeholder={filterMode === 'pending' ? "Search unpaid..." : "Search deliveries..."} 
                       className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
@@ -502,9 +532,9 @@ export const Deliveries: React.FC = () => {
 
                  <button 
                     onClick={() => { resetForm(); setView('create'); }}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5 font-semibold text-sm whitespace-nowrap"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5 font-semibold text-sm whitespace-nowrap active:scale-95"
                   >
-                    <Plus size={18} /> New
+                    <Plus size={18} /> New Delivery
                  </button>
              </div>
           </div>
@@ -578,8 +608,8 @@ export const Deliveries: React.FC = () => {
             </div>
             
             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                <div className="p-8 space-y-8">
-                    
+                <div className="p-4 sm:p-8 space-y-8">
+
                     {/* Store Selection */}
                     <div className="space-y-3">
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">1. Select Store</label>
@@ -590,7 +620,7 @@ export const Deliveries: React.FC = () => {
                                     setSelectedStoreId(e.target.value);
                                     setCashReceived(true); // Reset when store changes
                                 }}
-                                className="w-full p-4 pl-4 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none cursor-pointer font-medium text-slate-700"
+                                className="w-full p-4 pl-4 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none cursor-pointer font-medium text-slate-700 text-base"
                             >
                                 <option value="">-- Choose Store --</option>
                                 {stores.map(s => <option key={s.id} value={s.id}>{s.name} - {s.address}</option>)}
@@ -642,29 +672,47 @@ export const Deliveries: React.FC = () => {
                             <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded text-[10px]">{cart.length} items</span>
                         </label>
                         
-                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                        <div className="bg-slate-50 p-4 sm:p-6 rounded-2xl border border-slate-200">
                             <div className="flex flex-col sm:flex-row gap-3 mb-6">
                                 <div className="flex-1 relative">
                                     <select 
-                                    value={selectedProductId}
-                                    onChange={(e) => setSelectedProductId(e.target.value)}
-                                    className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm appearance-none bg-white font-medium"
+                                        value={selectedProductId}
+                                        onChange={(e) => setSelectedProductId(e.target.value)}
+                                        className="w-full p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-base sm:text-sm appearance-none bg-white font-medium"
                                     >
-                                    <option value="">Select Product...</option>
+                                    {/* Default selected option is managed by state, no need for placeholder if data exists */}
+                                    {products.length === 0 && <option value="">Loading products...</option>}
                                     {products.map(p => <option key={p.id} value={p.id}>{p.name} (${p.price}/{p.unit})</option>)}
                                     </select>
                                 </div>
                                 <div className="flex gap-3">
-                                    <input 
-                                        type="number" 
-                                        min="1" 
-                                        value={quantity}
-                                        onChange={(e) => setQuantity(parseInt(e.target.value))}
-                                        className="w-24 p-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm text-center font-bold"
-                                    />
+                                    <div className="flex items-center border border-slate-200 rounded-xl overflow-hidden bg-white">
+                                        <button 
+                                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                            className="px-3 py-3 bg-slate-50 hover:bg-slate-100 border-r border-slate-200 active:bg-slate-200 transition-colors h-full flex items-center justify-center"
+                                            type="button"
+                                        >
+                                            <Minus size={18} className="text-slate-600"/>
+                                        </button>
+                                        <input 
+                                            type="number" 
+                                            min="1" 
+                                            value={quantity}
+                                            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                                            className="w-14 py-3 text-center outline-none text-slate-800 font-bold appearance-none m-0 bg-transparent"
+                                        />
+                                        <button 
+                                            onClick={() => setQuantity(quantity + 1)}
+                                            className="px-3 py-3 bg-slate-50 hover:bg-slate-100 border-l border-slate-200 active:bg-slate-200 transition-colors h-full flex items-center justify-center"
+                                            type="button"
+                                        >
+                                            <Plus size={18} className="text-slate-600"/>
+                                        </button>
+                                    </div>
+
                                     <button 
                                         onClick={handleAddItem}
-                                        className="bg-slate-900 text-white px-6 py-2 rounded-xl hover:bg-slate-800 font-medium transition-colors shadow-lg shadow-slate-200"
+                                        className="bg-slate-900 text-white px-6 py-2 rounded-xl hover:bg-slate-800 font-medium transition-colors shadow-lg shadow-slate-200 active:scale-95"
                                     >
                                         Add
                                     </button>
@@ -677,13 +725,13 @@ export const Deliveries: React.FC = () => {
                                 {cart.map((item, idx) => (
                                     <div key={idx} className="flex justify-between items-center bg-white p-3 rounded-xl border border-slate-100 shadow-sm group">
                                     <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100">
+                                        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center border border-indigo-100 shrink-0">
                                             <Package size={16} />
                                         </div>
-                                        <span className="font-bold text-slate-700">{item.productName} <span className="text-slate-400 text-xs font-normal ml-1">x{item.quantity}</span></span>
+                                        <span className="font-bold text-slate-700 text-sm">{item.productName} <span className="text-slate-400 text-xs font-normal ml-1">x{item.quantity}</span></span>
                                     </div>
                                     <div className="flex items-center gap-4">
-                                        <span className="font-mono font-bold text-slate-800">${(item.quantity * item.priceAtDelivery).toFixed(2)}</span>
+                                        <span className="font-mono font-bold text-slate-800 text-sm">${(item.quantity * item.priceAtDelivery).toFixed(2)}</span>
                                         <button onClick={() => handleRemoveItem(idx)} className="text-slate-300 hover:text-red-500 transition-colors p-1">
                                             <Trash2 size={18} />
                                         </button>
@@ -708,7 +756,9 @@ export const Deliveries: React.FC = () => {
                     <div className="grid md:grid-cols-2 gap-8">
                         {/* Signature */}
                         <div className="space-y-3">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">3. Signature</label>
+                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                                3. Signature <span className="text-slate-300 font-normal ml-1">(Optional)</span>
+                            </label>
                             
                             {signature ? (
                                 <div className="border-2 border-slate-200 rounded-2xl bg-white overflow-hidden h-40 w-full relative group shadow-sm">
@@ -734,7 +784,7 @@ export const Deliveries: React.FC = () => {
                             <textarea 
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
-                                className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none h-40 resize-none bg-slate-50 focus:bg-white transition-colors text-sm"
+                                className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none h-40 resize-none bg-slate-50 focus:bg-white transition-colors text-base sm:text-sm"
                                 placeholder="Any delivery notes or issues..."
                             />
                         </div>
@@ -742,10 +792,10 @@ export const Deliveries: React.FC = () => {
 
                 </div>
 
-                <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-4">
+                <div className="p-4 sm:p-6 bg-slate-50 border-t border-slate-100 flex flex-col-reverse sm:flex-row justify-end gap-4">
                     <button 
                         onClick={() => setView('list')}
-                        className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:text-slate-700 hover:bg-white border border-transparent hover:border-slate-200 transition-all"
+                        className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:text-slate-700 hover:bg-white border border-transparent hover:border-slate-200 transition-all w-full sm:w-auto"
                         disabled={submitting}
                     >
                         Cancel
@@ -753,7 +803,7 @@ export const Deliveries: React.FC = () => {
                     <button 
                         onClick={handleSubmit}
                         disabled={submitting}
-                        className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all transform active:scale-95 flex items-center gap-2"
+                        className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all transform active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto"
                     >
                         {submitting && <Loader2 className="animate-spin" size={20}/>}
                         {view === 'edit' ? 'Update Delivery' : 'Complete Delivery'}

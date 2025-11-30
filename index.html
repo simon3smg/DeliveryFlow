@@ -1,8 +1,9 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
     <title>DeliveryFlow</title>
     
     <!-- ERROR TRAP: Displays startup errors on screen -->
@@ -33,6 +34,9 @@
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
             },
+            padding: {
+              'safe': 'env(safe-area-inset-bottom)'
+            }
           }
         }
       }
@@ -75,6 +79,13 @@
       .leaflet-default-icon-path {
         background-image: url(https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png);
       }
+
+      /* Mobile Optimizations */
+      @media screen and (max-width: 768px) {
+        input, select, textarea {
+          font-size: 16px !important; /* Prevent iOS zoom */
+        }
+      }
     </style>
   <script type="importmap">
 {
@@ -96,7 +107,7 @@
 }
 </script>
 </head>
-  <body class="text-slate-900 antialiased">
+  <body class="text-slate-900 antialiased overflow-hidden">
     <div id="root" class="flex h-screen w-full items-center justify-center bg-slate-50 text-indigo-600">
         <!-- Initial Loader -->
         <div class="flex flex-col items-center gap-4">
