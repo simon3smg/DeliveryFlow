@@ -73,4 +73,5 @@ export interface DriverLocation {
   nextStopName?: string;
   eta?: string; // Estimated time e.g., "14 mins"
   history: {lat: number, lng: number}[]; // Last 20 points for trail
+  timestamp?: number;
 }

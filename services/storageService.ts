@@ -24,7 +24,8 @@ import {
   getDoc,
   query, 
   orderBy,
-  where 
+  where,
+  onSnapshot
 } from 'firebase/firestore';
 import { Store, Product, Delivery, DriverLocation, User } from '../types';
 
@@ -59,6 +60,7 @@ const authSubscribers = new Set<(user: User | null) => void>();
 // Store local simulations
 let driverSimulationState: Record<string, DriverLocation> = {};
 let lastKnownRealDrivers: DriverLocation[] = [];
+let lastKnownDriverIds: Set<string> = new Set(); // Cache for valid driver IDs
 let locationWatchId: number | null = null;
 
 // Edmonton Distribution Center Coordinates
@@ -277,6 +279,7 @@ export const storageService = {
   updateDriverLocation: async (lat: number, lng: number, heading: number = 0, speed: number = 0) => {
     if (!currentUser || currentUser.role !== 'driver') return;
     
+    const timestamp = Date.now();
     const data = {
         driverId: currentUser.id,
         driverName: currentUser.name,
@@ -284,7 +287,7 @@ export const storageService = {
         lng,
         heading,
         speed,
-        timestamp: Date.now(),
+        timestamp: timestamp,
         status: (speed && speed > 0.5) ? 'moving' : 'stopped' as 'moving' | 'stopped'
     };
 
@@ -301,7 +304,6 @@ export const storageService = {
     if (cachedIndex >= 0) {
         lastKnownRealDrivers[cachedIndex] = { ...lastKnownRealDrivers[cachedIndex], ...data };
     } else {
-        // Fix: Ensure history is initialized when adding new driver
         lastKnownRealDrivers.push({ ...data, history: [] } as DriverLocation);
     }
 
@@ -318,6 +320,14 @@ export const storageService = {
   getStores: async (): Promise<Store[]> => {
     const snapshot = await getDocs(collection(db, 'stores'));
     return snapshot.docs.map(doc => mapDoc<Store>(doc));
+  },
+  
+  subscribeToStores: (callback: (stores: Store[]) => void) => {
+    const q = query(collection(db, 'stores'));
+    return onSnapshot(q, (snapshot) => {
+        const stores = snapshot.docs.map(doc => mapDoc<Store>(doc));
+        callback(stores);
+    });
   },
   
   addStore: async (store: Omit<Store, 'id'>) => {
@@ -402,7 +412,15 @@ export const storageService = {
         const q = query(usersRef, where('role', '==', 'driver'));
         const snapshot = await getDocs(q);
         users = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as User));
+        
+        // Update verified driver ID cache
+        lastKnownDriverIds = new Set(users.map(u => u.id));
     } catch(e) { /* ignore */ }
+
+    // Filter out admins or non-drivers from real location data if we have verified driver info
+    if (lastKnownDriverIds.size > 0) {
+        realDrivers = realDrivers.filter(rd => lastKnownDriverIds.has(rd.driverId));
+    }
 
     // If no real drivers and no users, return empty
     if (users.length === 0 && realDrivers.length === 0) return [];
@@ -433,7 +451,8 @@ export const storageService = {
                     status: 'idle',
                     nextStopName: stores.length > 1 ? stores[1].name : 'Route Start',
                     eta: 'Calculating...',
-                    history: []
+                    history: [],
+                    timestamp: Date.now()
                 };
             }
 
@@ -463,7 +482,8 @@ export const storageService = {
                 speed: Math.floor(20 + (idHash % 30)),
                 status: 'moving',
                 history: newHistory,
-                eta: `${Math.floor(10 + (idHash % 20))} mins`
+                eta: `${Math.floor(10 + (idHash % 20))} mins`,
+                timestamp: Date.now()
             };
 
             driverSimulationState[driver.id] = newState;
