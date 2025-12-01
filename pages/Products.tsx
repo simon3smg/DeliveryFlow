@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Product } from '../types';
+import { Product, User as UserType } from '../types';
 import { storageService } from '../services/storageService';
 import { Plus, Trash2, Package, Search, X, Edit2, Loader2, AlertTriangle, Tag, ChevronRight } from 'lucide-react';
 
@@ -12,9 +12,12 @@ export const Products: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
 
   useEffect(() => {
     loadProducts();
+    const unsub = storageService.onAuthStateChanged(u => setCurrentUser(u));
+    return () => unsub();
   }, []);
 
   const loadProducts = async () => {
@@ -64,6 +67,35 @@ export const Products: React.FC = () => {
     }
   };
 
+  const checkAdminPermission = () => {
+    if (currentUser?.role !== 'admin') {
+      alert("Access Restricted: This action is reserved for Administrators. Please contact Administration.");
+      return false;
+    }
+    return true;
+  };
+
+  const handleAddNew = () => {
+      if (!checkAdminPermission()) return;
+      setEditingProduct({}); 
+      setIsModalOpen(true);
+  };
+
+  const handleEditClick = (e: React.MouseEvent, product: Product) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!checkAdminPermission()) return;
+      setEditingProduct({...product});
+      setIsModalOpen(true);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, id: string) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!checkAdminPermission()) return;
+      setProductToDelete(id);
+  };
+
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(filter.toLowerCase()));
 
   if (loading) {
@@ -84,7 +116,7 @@ export const Products: React.FC = () => {
             />
         </div>
         <button 
-          onClick={() => { setEditingProduct({}); setIsModalOpen(true); }}
+          onClick={handleAddNew}
           className="w-full sm:w-auto bg-indigo-600 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 hover:bg-indigo-700 shadow-lg shadow-indigo-200 transition-all font-medium active:scale-95"
         >
           <Plus size={18} /> <span className="hidden sm:inline">Add Product</span><span className="sm:hidden">Add</span>
@@ -94,7 +126,7 @@ export const Products: React.FC = () => {
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
         {filteredProducts.map(product => (
-          <div key={product.id} onClick={() => { setEditingProduct({...product}); setIsModalOpen(true); }} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm active:scale-98 transition-transform flex items-center justify-between">
+          <div key={product.id} onClick={(e) => handleEditClick(e, product)} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm active:scale-98 transition-transform flex items-center justify-between">
              <div className="flex items-center gap-4">
                 <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 border border-indigo-100">
                     <Package size={20} />
@@ -147,8 +179,8 @@ export const Products: React.FC = () => {
                     </td>
                     <td className="p-6 pr-8 text-right">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onClick={() => { setEditingProduct({...product}); setIsModalOpen(true); }} className="text-slate-400 hover:text-indigo-600 p-2.5 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 transition-all"><Edit2 size={18} /></button>
-                            <button onClick={(e) => { e.stopPropagation(); setProductToDelete(product.id); }} className="text-slate-400 hover:text-red-500 p-2.5 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 transition-all"><Trash2 size={18} /></button>
+                            <button onClick={(e) => handleEditClick(e, product)} className="text-slate-400 hover:text-indigo-600 p-2.5 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 transition-all"><Edit2 size={18} /></button>
+                            <button onClick={(e) => handleDeleteClick(e, product.id)} className="text-slate-400 hover:text-red-500 p-2.5 rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 transition-all"><Trash2 size={18} /></button>
                         </div>
                     </td>
                 </tr>
@@ -189,7 +221,7 @@ export const Products: React.FC = () => {
                 <div className="pt-2 gap-3 flex flex-col sm:flex-row">
                     {editingProduct.id && (
                         <button 
-                            onClick={() => setProductToDelete(editingProduct.id)} 
+                            onClick={(e) => handleDeleteClick(e, editingProduct.id!)}
                             className="w-full py-3 border border-red-100 text-red-500 rounded-xl font-bold hover:bg-red-50 transition-colors sm:hidden"
                         >
                             Delete Product

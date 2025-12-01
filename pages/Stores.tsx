@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Store } from '../types';
+import { Store, User as UserType } from '../types';
 import { storageService } from '../services/storageService';
 import { Plus, Trash2, MapPin, Phone, Mail, Store as StoreIcon, X, Edit2, Loader2, AlertTriangle, ChevronRight, CreditCard, Banknote } from 'lucide-react';
 
@@ -11,9 +11,12 @@ export const Stores: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [storeToDelete, setStoreToDelete] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
 
   useEffect(() => {
     loadStores();
+    const unsub = storageService.onAuthStateChanged(u => setCurrentUser(u));
+    return () => unsub();
   }, []);
 
   const loadStores = async () => {
@@ -58,9 +61,20 @@ export const Stores: React.FC = () => {
     }
   };
 
+  const checkAdminPermission = () => {
+    if (currentUser?.role !== 'admin') {
+      alert("Access Restricted: This action is reserved for Administrators. Please contact Administration.");
+      return false;
+    }
+    return true;
+  };
+
   const handleEdit = (e: React.MouseEvent, store: Store) => {
       e.preventDefault();
       e.stopPropagation();
+      
+      if (!checkAdminPermission()) return;
+
       setEditingStore({ ...store });
       setIsModalOpen(true);
   };
@@ -68,6 +82,9 @@ export const Stores: React.FC = () => {
   const handleDeleteClick = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (!checkAdminPermission()) return;
+
     setStoreToDelete(id);
   };
 
@@ -83,6 +100,8 @@ export const Stores: React.FC = () => {
   };
 
   const openNewStoreModal = () => {
+      if (!checkAdminPermission()) return;
+
       setEditingStore({ paymentMethod: 'credit' });
       setIsModalOpen(true);
   };

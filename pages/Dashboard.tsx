@@ -1,9 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 import { Truck, Package, DollarSign, Store as StoreIcon, TrendingUp, MoreHorizontal, Loader2, CheckCircle, AlertCircle, MapPin, ArrowRight } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Delivery, Store } from '../types';
 import { LiveMap } from '../components/LiveMap';
 import { useNavigate } from 'react-router-dom';
+import { getEdmontonISOString, getEdmontonDayIndex, getEdmontonDayName } from '../services/dateUtils';
 
 export const Dashboard: React.FC = () => {
   const navigate = useNavigate();
@@ -39,12 +41,12 @@ export const Dashboard: React.FC = () => {
 
   // --- Notification / Schedule Logic ---
   const getDailyProgress = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getEdmontonISOString();
     
-    // Get IDs of stores visited today
+    // Get IDs of stores visited today (Edmonton Time)
     const visitedStoreIds = new Set(
         deliveries
-        .filter(d => d.timestamp.startsWith(todayStr))
+        .filter(d => getEdmontonISOString(d.timestamp) === todayStr)
         .map(d => d.storeId)
     );
 
@@ -62,13 +64,12 @@ export const Dashboard: React.FC = () => {
 
   // Chart Data Preparation
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const today = new Date().getDay();
-  const rotatedDays = [...days.slice(today + 1), ...days.slice(0, today + 1)];
+  const todayIndex = getEdmontonDayIndex();
+  const rotatedDays = [...days.slice(todayIndex + 1), ...days.slice(0, todayIndex + 1)];
   
   const chartData = rotatedDays.map(day => {
       const count = deliveries.filter(d => {
-          const dDate = new Date(d.timestamp);
-          return days[dDate.getDay()] === day;
+          return getEdmontonDayName(d.timestamp) === day;
       }).length;
       return { day, count };
   });
@@ -214,7 +215,7 @@ export const Dashboard: React.FC = () => {
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h3 className="font-bold text-lg text-slate-800">Weekly Activity</h3>
-                    <p className="text-xs text-slate-400">Delivery volume last 7 days</p>
+                    <p className="text-xs text-slate-400">Delivery volume last 7 days (Edmonton)</p>
                 </div>
                 <div className="p-2 bg-slate-50 rounded-lg">
                     <MoreHorizontal size={20} className="text-slate-400" />

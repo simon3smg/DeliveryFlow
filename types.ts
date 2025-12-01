@@ -38,6 +38,8 @@ export interface Delivery {
   status: 'completed' | 'pending';
   paymentMethod: 'cash' | 'credit';
   paymentStatus: 'paid' | 'pending';
+  lastEditedBy?: string;
+  lastEditedAt?: string;
 }
 
 export interface User {

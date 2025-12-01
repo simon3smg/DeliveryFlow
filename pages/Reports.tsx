@@ -4,6 +4,7 @@ import { Sparkles, Calendar, Printer, Loader2, Package, DollarSign, Banknote, Cr
 import { storageService } from '../services/storageService';
 import { generateDeliveryReportInsight } from '../services/geminiService';
 import { Delivery, Store as StoreType } from '../types';
+import { formatEdmontonDate, getEdmontonISOString, getEdmontonMonthString, getEdmontonYear } from '../services/dateUtils';
 
 type Timeframe = 'daily' | 'monthly' | 'yearly';
 
@@ -29,9 +30,6 @@ interface StatementData {
 
 const formatCurrency = (amount: number) => 
   new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD' }).format(amount);
-
-const formatDate = (dateStr: string) => 
-  new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
 // --- PRINT STYLES ---
 const PrintStyles = () => (
@@ -125,7 +123,7 @@ const InvoiceTemplate = ({ data, onClose }: { data: InvoiceData, onClose: () => 
          
          {/* Controls */}
          <div className="fixed top-6 right-6 no-print flex gap-3 z-[60]">
-            <button onClick={() => window.print()} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg hover:bg-emerald-700 hover:scale-105 transition-all flex items-center gap-2">
+            <button onClick={() => window.print()} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg hover:bg-emerald-700 hover:scale-110 transition-all flex items-center gap-2">
                 <Printer size={20} /> Print Invoice
             </button>
             <button onClick={onClose} className="bg-white text-slate-700 px-5 py-2.5 rounded-xl font-bold shadow-lg hover:bg-slate-50 transition-all flex items-center gap-2">
@@ -174,11 +172,11 @@ const InvoiceTemplate = ({ data, onClose }: { data: InvoiceData, onClose: () => 
                     </div>
                     <div className="flex justify-between">
                         <span className="font-bold text-slate-900 text-sm">Invoice Date:</span>
-                        <span className="text-slate-700 text-sm">{formatDate(invoiceDate.toISOString())}</span>
+                        <span className="text-slate-700 text-sm">{formatEdmontonDate(invoiceDate)}</span>
                     </div>
                     <div className="flex justify-between">
                         <span className="font-bold text-slate-900 text-sm">Payment Due:</span>
-                        <span className="text-slate-700 text-sm">{formatDate(dueDate.toISOString())}</span>
+                        <span className="text-slate-700 text-sm">{formatEdmontonDate(dueDate)}</span>
                     </div>
                     <div className="flex justify-between bg-slate-100 p-2 -mx-2 rounded">
                         <span className="font-bold text-slate-900 text-sm">Amount Due (CAD):</span>
@@ -281,7 +279,7 @@ const StatementTemplate = ({ data, onClose }: { data: StatementData, onClose: ()
             
             {/* Controls */}
             <div className="fixed top-6 right-6 no-print flex gap-3 z-[60]">
-                <button onClick={() => window.print()} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg hover:bg-indigo-700 hover:scale-105 transition-all flex items-center gap-2">
+                <button onClick={() => window.print()} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg hover:bg-indigo-700 hover:scale-110 transition-all flex items-center gap-2">
                     <Printer size={20} /> Print Statement
                 </button>
                 <button onClick={onClose} className="bg-white text-slate-700 px-5 py-2.5 rounded-xl font-bold shadow-lg hover:bg-slate-50 transition-all flex items-center gap-2">
@@ -321,7 +319,7 @@ const StatementTemplate = ({ data, onClose }: { data: StatementData, onClose: ()
                     <div className="w-96">
                         <div className="text-right mb-4">
                             <h3 className="font-bold text-slate-900 text-lg">Canadian dollar (CAD)</h3>
-                            <p className="text-sm text-slate-500">As of {formatDate(now.toISOString())}</p>
+                            <p className="text-sm text-slate-500">As of {formatEdmontonDate(now)}</p>
                         </div>
                         
                         <div className="space-y-2">
@@ -366,9 +364,9 @@ const StatementTemplate = ({ data, onClose }: { data: StatementData, onClose: ()
                                         <td className="py-4">
                                             <span className="font-bold text-blue-600">Invoice {shortId}</span>
                                         </td>
-                                        <td className="py-4 text-slate-700">{formatDate(inv.timestamp)}</td>
+                                        <td className="py-4 text-slate-700">{formatEdmontonDate(inv.timestamp)}</td>
                                         <td className="py-4 text-slate-700">
-                                            <div>{formatDate(dueDate.toISOString())}</div>
+                                            <div>{formatEdmontonDate(dueDate)}</div>
                                             {isOverdue && <div className="text-red-600 font-bold text-xs mt-0.5">Overdue</div>}
                                         </td>
                                         <td className="py-4 text-right text-slate-700">{formatCurrency(total)}</td>
@@ -405,7 +403,7 @@ const StatementTemplate = ({ data, onClose }: { data: StatementData, onClose: ()
 
 export const Reports: React.FC = () => {
   const [timeframe, setTimeframe] = useState<Timeframe>('monthly');
-  const [dateValue, setDateValue] = useState(new Date().toISOString().slice(0, 7)); 
+  const [dateValue, setDateValue] = useState(getEdmontonMonthString()); 
   
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [stores, setStores] = useState<StoreType[]>([]);
@@ -435,13 +433,12 @@ export const Reports: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const now = new Date();
-    if (timeframe === 'daily') setDateValue(now.toISOString().slice(0, 10));
-    else if (timeframe === 'monthly') setDateValue(now.toISOString().slice(0, 7));
-    else if (timeframe === 'yearly') setDateValue(now.getFullYear().toString());
+    if (timeframe === 'daily') setDateValue(getEdmontonISOString());
+    else if (timeframe === 'monthly') setDateValue(getEdmontonMonthString());
+    else if (timeframe === 'yearly') setDateValue(getEdmontonYear());
   }, [timeframe]);
 
-  const filteredDeliveries = deliveries.filter(d => d.timestamp.startsWith(dateValue));
+  const filteredDeliveries = deliveries.filter(d => getEdmontonISOString(d.timestamp).startsWith(dateValue));
   
   const totalRevenue = filteredDeliveries.reduce((acc, d) => 
     acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0
@@ -529,7 +526,7 @@ export const Reports: React.FC = () => {
   const handleOpenStatement = (store: StoreType) => {
       const statementDeliveries = deliveries.filter(d => {
           if (d.storeId !== store.id) return false;
-          return d.paymentStatus === 'pending' || d.timestamp.startsWith(dateValue);
+          return d.paymentStatus === 'pending' || getEdmontonISOString(d.timestamp).startsWith(dateValue);
       });
 
       setStatementData({

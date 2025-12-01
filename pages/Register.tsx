@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Truck, Lock, Mail, User, ArrowRight, Loader2 } from 'lucide-react';
@@ -27,7 +28,15 @@ export const Register: React.FC = () => {
         navigate('/');
     } catch (err: any) {
         console.error(err);
-        setError(err.message || 'Registration failed');
+        if (err.code === 'auth/email-already-in-use') {
+            setError('This email is already registered. Please sign in instead.');
+        } else if (err.code === 'auth/weak-password') {
+            setError('Password should be at least 6 characters.');
+        } else if (err.code === 'auth/invalid-email') {
+            setError('Please enter a valid email address.');
+        } else {
+            setError(err.message || 'Registration failed. Please try again.');
+        }
         setLoading(false);
     }
   };
@@ -44,7 +53,7 @@ export const Register: React.FC = () => {
         <div className="p-8">
           <form onSubmit={handleRegister} className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl border border-red-100 text-center">
+              <div className="bg-red-50 text-red-600 text-sm p-3 rounded-xl border border-red-100 text-center animate-in fade-in slide-in-from-top-2">
                 {error}
               </div>
             )}

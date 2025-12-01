@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { 
@@ -245,10 +244,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                    : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}
                `}
              >
-               <div className={({ isActive }: any) => isActive ? "transform scale-110 transition-transform" : ""}>
-                 {item.icon}
-               </div>
-               <span className="text-[10px] font-medium tracking-tight truncate w-full text-center">{item.label}</span>
+               {({ isActive }) => (
+                 <>
+                   <div className={isActive ? "transform scale-110 transition-transform" : ""}>
+                     {item.icon}
+                   </div>
+                   <span className="text-[10px] font-medium tracking-tight truncate w-full text-center">{item.label}</span>
+                 </>
+               )}
              </NavLink>
            ))}
         </nav>

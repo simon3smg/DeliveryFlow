@@ -5,6 +5,7 @@ import { storageService } from '../services/storageService';
 import { Delivery, Store, Product, DeliveryItem, User as UserType } from '../types';
 import { SignaturePad } from '../components/SignaturePad';
 import { useLocation } from 'react-router-dom';
+import { formatEdmontonDate, formatEdmontonTime, getEdmontonISOString, toEdmontonISOString, getCurrentEdmontonISOString } from '../services/dateUtils';
 
 // --- Sub-component for individual delivery card ---
 const DeliveryCard: React.FC<{ 
@@ -35,7 +36,7 @@ const DeliveryCard: React.FC<{
            <div className="min-w-0">
               <h3 className="font-bold text-slate-800 text-sm sm:text-base truncate">{delivery.storeName}</h3>
               <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
-                 <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(delivery.timestamp).toLocaleDateString()}</span>
+                 <span className="flex items-center gap-1"><Calendar size={12} /> {formatEdmontonDate(delivery.timestamp)}</span>
                  <span className="w-1 h-1 rounded-full bg-slate-300"></span>
                  <span className="font-medium text-slate-600">{itemCount} items</span>
                  
@@ -80,7 +81,7 @@ const DeliveryCard: React.FC<{
                     <User size={12} className="text-indigo-500"/> <span className="font-medium text-slate-700">{delivery.driverName}</span>
                  </span>
                  <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm">
-                    <Clock size={12} className="text-indigo-500"/> <span className="font-medium text-slate-700">{new Date(delivery.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    <Clock size={12} className="text-indigo-500"/> <span className="font-medium text-slate-700">{formatEdmontonTime(delivery.timestamp)}</span>
                  </span>
                  <span className="sm:hidden flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-1 rounded font-bold uppercase tracking-wide text-[10px]">
                     <CheckCircle size={10}/> {delivery.status}
@@ -158,6 +159,14 @@ const DeliveryCard: React.FC<{
                     <Edit2 size={14} /> Edit Delivery
                  </button>
               </div>
+
+              {/* Last Edited By info */}
+              {delivery.lastEditedBy && (
+                  <div className="mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-400 italic flex items-center justify-end gap-1">
+                      <Edit2 size={10} />
+                      <span>Last edited by {delivery.lastEditedBy} • {formatEdmontonDate(delivery.lastEditedAt)} {formatEdmontonTime(delivery.lastEditedAt)}</span>
+                  </div>
+              )}
            </div>
         </div>
       )}
@@ -177,22 +186,18 @@ export const Deliveries: React.FC = () => {
   
   const location = useLocation();
 
-  // Helpers for date string YYYY-MM-DD
-  const getTodayString = () => {
-    const now = new Date();
-    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-  };
-
   const formatDateDisplay = (dateStr: string) => {
      if (!dateStr) return '';
+     // dateStr is YYYY-MM-DD
      const [y, m, d] = dateStr.split('-').map(Number);
-     const date = new Date(y, m - 1, d);
-     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+     // Use UTC to format to ensure we stay on the same day visual
+     const date = new Date(Date.UTC(y, m - 1, d));
+     return new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date);
   };
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [dateFilter, setDateFilter] = useState(getTodayString);
+  const [dateFilter, setDateFilter] = useState(getEdmontonISOString);
   
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -256,11 +261,11 @@ export const Deliveries: React.FC = () => {
   };
 
   const changeDate = (days: number) => {
-      // Safe arithmetic using date parts to avoid UTC shifting
+      // Safe arithmetic using UTC to avoid timezone shifting
       const [y, m, d] = dateFilter.split('-').map(Number);
-      const date = new Date(y, m - 1, d);
-      date.setDate(date.getDate() + days);
-      const nextDate = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+      const date = new Date(Date.UTC(y, m - 1, d));
+      date.setUTCDate(date.getUTCDate() + days);
+      const nextDate = date.getUTCFullYear() + '-' + String(date.getUTCMonth() + 1).padStart(2, '0') + '-' + String(date.getUTCDate()).padStart(2, '0');
       setDateFilter(nextDate);
   };
 
@@ -293,9 +298,19 @@ export const Deliveries: React.FC = () => {
     setCart(newCart);
   };
 
+  const checkAdminPermission = () => {
+    if (currentUser?.role !== 'admin') {
+      alert("Access Restricted: This action is reserved for Administrators. Please contact Administration.");
+      return false;
+    }
+    return true;
+  };
+
   const handleEdit = (e: React.MouseEvent, delivery: Delivery) => {
       e.preventDefault();
       e.stopPropagation();
+
+      // Permission check removed to allow drivers to edit
       setEditingId(delivery.id);
       setSelectedStoreId(delivery.storeId);
       setCart(delivery.items);
@@ -315,10 +330,15 @@ export const Deliveries: React.FC = () => {
   const handleMarkPaid = async (e: React.MouseEvent, delivery: Delivery) => {
       e.preventDefault();
       e.stopPropagation();
+
+      // Permission check removed to allow drivers to mark paid
+
       try {
         await storageService.updateDelivery({
             ...delivery,
-            paymentStatus: 'paid'
+            paymentStatus: 'paid',
+            lastEditedBy: currentUser?.name,
+            lastEditedAt: getCurrentEdmontonISOString()
         });
         await refreshData();
       } catch (err) {
@@ -330,6 +350,9 @@ export const Deliveries: React.FC = () => {
   const handleDeleteClick = (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
+
+    if (!checkAdminPermission()) return;
+
     if (id) {
         setDeliveryToDelete(id);
     }
@@ -362,14 +385,18 @@ export const Deliveries: React.FC = () => {
     setSubmitting(true);
     const store = stores.find(s => s.id === selectedStoreId);
     
-    let timestamp = new Date().toISOString();
+    // Use the Edmonton ISO string with offset for the timestamp
+    // Defaults to current time if creating new
+    let timestamp = toEdmontonISOString(new Date());
     let id = Date.now().toString();
     let driverName = currentUser?.name || 'Unknown Driver';
 
     if (view === 'edit' && editingId) {
         const original = deliveries.find(d => d.id === editingId);
         if (original) {
-            timestamp = original.timestamp;
+            // Even when editing, force the format to be Edmonton offset
+            // This fixes legacy data that might be in UTC 'Z' format
+            timestamp = toEdmontonISOString(original.timestamp);
             id = original.id;
             driverName = original.driverName || driverName;
         }
@@ -397,6 +424,12 @@ export const Deliveries: React.FC = () => {
       paymentMethod: store?.paymentMethod || 'credit',
       paymentStatus: paymentStatus
     };
+
+    // If editing, add tracking metadata
+    if (view === 'edit') {
+        payload.lastEditedBy = currentUser?.name;
+        payload.lastEditedAt = getCurrentEdmontonISOString();
+    }
 
     try {
         if (view === 'edit') {
@@ -438,10 +471,9 @@ export const Deliveries: React.FC = () => {
         return searchMatch && d.paymentMethod === 'cash' && d.paymentStatus === 'pending';
     }
 
-    // Daily View
-    const deliveryDate = new Date(d.timestamp);
-    const deliveryDateStr = deliveryDate.getFullYear() + '-' + String(deliveryDate.getMonth() + 1).padStart(2, '0') + '-' + String(deliveryDate.getDate()).padStart(2, '0');
-    
+    // Daily View (Edmonton Time)
+    // d.timestamp might be ISO or Z, getEdmontonISOString handles both via Date constructor
+    const deliveryDateStr = getEdmontonISOString(d.timestamp);
     return searchMatch && deliveryDateStr === dateFilter;
   });
 
@@ -571,7 +603,7 @@ export const Deliveries: React.FC = () => {
                  {filterMode === 'daily' && (
                     <button 
                         onClick={() => {
-                            setDateFilter(getTodayString());
+                            setDateFilter(getEdmontonISOString());
                             setSearchTerm('');
                         }}
                         className="mt-4 text-indigo-600 font-bold text-sm hover:underline"
