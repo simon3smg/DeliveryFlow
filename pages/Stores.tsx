@@ -128,7 +128,7 @@ export const Stores: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {stores.map(store => (
-          <div key={store.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-lg hover:border-indigo-100 transition-all group relative overflow-hidden">
+          <div key={store.id} className="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-lg hover:border-indigo-100 transition-all group relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-slate-50 to-indigo-50 rounded-bl-full -mr-10 -mt-10 transition-transform group-hover:scale-110 pointer-events-none"></div>
             
             {store.sequence && (
@@ -195,14 +195,14 @@ export const Stores: React.FC = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
-          <div className="bg-white w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 sm:zoom-in duration-300 max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-end sm:items-center justify-center z-[100] sm:p-4">
+          <div className="bg-white w-full h-[100dvh] sm:h-auto sm:max-h-[85vh] sm:max-w-lg rounded-none sm:rounded-3xl shadow-2xl overflow-hidden animate-in slide-in-from-bottom-5 sm:zoom-in duration-300 flex flex-col">
+            <div className="p-4 sm:p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 shrink-0">
                 <h3 className="text-xl font-bold text-slate-800">{editingStore.id ? 'Edit Store' : 'New Store'}</h3>
                 <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors"><X size={20} /></button>
             </div>
             
-            <div className="p-6 sm:p-8 space-y-5">
+            <div className="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1 overscroll-contain">
               <div className="grid grid-cols-4 gap-4">
                   <div className="col-span-3 space-y-2">
                      <label className="text-xs font-bold text-slate-500 uppercase">Store Name</label>
@@ -280,13 +280,13 @@ export const Stores: React.FC = () => {
                     />
                  </div>
               </div>
+            </div>
 
-              <div className="pt-6 flex gap-3">
-                <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-50 rounded-xl">Cancel</button>
-                <button onClick={handleSave} disabled={saving} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg flex justify-center gap-2">
+            <div className="p-4 border-t border-slate-100 bg-slate-50 shrink-0 flex gap-3 pb-safe">
+                <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-slate-600 font-bold hover:bg-white border border-transparent hover:border-slate-200 rounded-xl transition-all">Cancel</button>
+                <button onClick={handleSave} disabled={saving} className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg flex justify-center gap-2 items-center">
                     {saving && <Loader2 className="animate-spin" size={20}/>} Save
                 </button>
-              </div>
             </div>
           </div>
         </div>

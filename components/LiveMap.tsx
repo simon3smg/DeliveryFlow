@@ -55,8 +55,8 @@ export const LiveMap: React.FC = () => {
   useEffect(() => {
     isMountedRef.current = true;
     
-    // Check if container exists or Leaflet is missing
-    if (!mapRef.current || typeof L === 'undefined') return;
+    // Check if container exists
+    if (!mapRef.current) return;
 
     // Cleanup existing instance if any (strict mode safe)
     if (mapInstance.current) {
@@ -146,7 +146,7 @@ export const LiveMap: React.FC = () => {
   // --- Subscribe to Stores (Real-time) ---
   useEffect(() => {
     const unsubscribe = storageService.subscribeToStores(async (stores) => {
-        if (!isMountedRef.current || !mapInstance.current || typeof L === 'undefined') return;
+        if (!isMountedRef.current || !mapInstance.current) return;
         const map = mapInstance.current;
 
         // Clear existing store markers
@@ -182,10 +182,7 @@ export const LiveMap: React.FC = () => {
                 const marker = L.marker([lat, lng], {
                 icon: L.divIcon({
                     className: 'bg-indigo-600 w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-white font-bold text-xs hover:scale-110 transition-transform',
-                    html: `<div class="relative w-full h-full flex items-center justify-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                              ${store.sequence ? `<div class="absolute -top-2 -right-2 bg-white text-indigo-700 text-[8px] font-bold w-4 h-4 rounded-full flex items-center justify-center border border-indigo-600 shadow-sm">${store.sequence}</div>` : ''}
-                           </div>`,
+                    html: '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
                     iconSize: [24, 24],
                     iconAnchor: [12, 24],
                     popupAnchor: [0, -24]
@@ -193,7 +190,7 @@ export const LiveMap: React.FC = () => {
                 }).bindPopup(`
                     <div class="p-2 min-w-[180px] font-sans">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="bg-indigo-100 text-indigo-700 p-0.5 px-1.5 rounded text-[10px] font-bold uppercase tracking-wider">Store ${store.sequence ? `#${store.sequence}` : ''}</span>
+                            <span class="bg-indigo-100 text-indigo-700 p-0.5 px-1.5 rounded text-[10px] font-bold uppercase tracking-wider">Store</span>
                         </div>
                         <h3 class="font-bold text-slate-900 text-sm mb-1">${store.name}</h3>
                         <p class="text-xs text-slate-500 mb-2 leading-tight">${store.address}</p>
@@ -238,7 +235,7 @@ export const LiveMap: React.FC = () => {
 
   // Update Driver Markers
   useEffect(() => {
-    if (!mapInstance.current || !isMountedRef.current || typeof L === 'undefined') return;
+    if (!mapInstance.current || !isMountedRef.current) return;
     const map = mapInstance.current;
 
     drivers.forEach(driver => {
