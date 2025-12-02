@@ -50,7 +50,10 @@ export const Dashboard: React.FC = () => {
         .map(d => d.storeId)
     );
 
-    const pendingStores = stores.filter(s => !visitedStoreIds.has(s.id));
+    const pendingStores = stores
+        .filter(s => !visitedStoreIds.has(s.id))
+        .sort((a, b) => (a.sequence || 999) - (b.sequence || 999));
+        
     return { pending: pendingStores, visitedCount: visitedStoreIds.size, total: stores.length };
   };
 
@@ -154,8 +157,8 @@ export const Dashboard: React.FC = () => {
                             aria-label={`Start delivery for ${store.name}`}
                         >
                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0">
-                                <MapPin size={14} className="text-indigo-300" />
+                              <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0 font-bold text-indigo-300 border border-indigo-500/30">
+                                {store.sequence || <MapPin size={14} />}
                               </div>
                               <div className="min-w-0">
                                 <span className="font-bold text-sm block truncate text-slate-200">{store.name}</span>

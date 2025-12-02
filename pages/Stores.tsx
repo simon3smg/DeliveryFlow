@@ -48,7 +48,8 @@ export const Stores: React.FC = () => {
                 contactPerson: editingStore.contactPerson || '',
                 phone: editingStore.phone || '',
                 email: editingStore.email || '',
-                paymentMethod: editingStore.paymentMethod || 'credit'
+                paymentMethod: editingStore.paymentMethod || 'credit',
+                sequence: editingStore.sequence
             });
         }
         await loadStores();
@@ -130,6 +131,12 @@ export const Stores: React.FC = () => {
           <div key={store.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 hover:shadow-lg hover:border-indigo-100 transition-all group relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-slate-50 to-indigo-50 rounded-bl-full -mr-10 -mt-10 transition-transform group-hover:scale-110 pointer-events-none"></div>
             
+            {store.sequence && (
+                <div className="absolute top-4 right-4 bg-slate-900 text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-md z-20 text-sm">
+                    #{store.sequence}
+                </div>
+            )}
+
             <div className="relative z-10">
                 <div className="flex justify-between items-start mb-4">
                     <div className="w-14 h-14 bg-white rounded-2xl shadow-sm border border-slate-100 flex items-center justify-center text-indigo-600">
@@ -196,14 +203,27 @@ export const Stores: React.FC = () => {
             </div>
             
             <div className="p-6 sm:p-8 space-y-5">
-              <div className="space-y-2">
-                 <label className="text-xs font-bold text-slate-500 uppercase">Store Name</label>
-                 <input 
-                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                    value={editingStore.name || ''}
-                    onChange={e => setEditingStore({...editingStore, name: e.target.value})}
-                 />
+              <div className="grid grid-cols-4 gap-4">
+                  <div className="col-span-3 space-y-2">
+                     <label className="text-xs font-bold text-slate-500 uppercase">Store Name</label>
+                     <input 
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                        value={editingStore.name || ''}
+                        onChange={e => setEditingStore({...editingStore, name: e.target.value})}
+                     />
+                  </div>
+                  <div className="col-span-1 space-y-2">
+                     <label className="text-xs font-bold text-slate-500 uppercase" title="Route Sequence">Seq #</label>
+                     <input 
+                        type="number"
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-center font-bold"
+                        value={editingStore.sequence || ''}
+                        onChange={e => setEditingStore({...editingStore, sequence: parseInt(e.target.value) || undefined})}
+                        placeholder="#"
+                     />
+                  </div>
               </div>
+
               <div className="space-y-2">
                  <label className="text-xs font-bold text-slate-500 uppercase">Address</label>
                  <input 

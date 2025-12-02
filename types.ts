@@ -9,6 +9,7 @@ export interface Store {
   lat?: number;
   lng?: number;
   paymentMethod: 'cash' | 'credit';
+  sequence?: number; // Route sequence number
 }
 
 export interface Product {

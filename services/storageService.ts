@@ -105,9 +105,9 @@ const mapDoc = <T>(doc: any): T => ({ id: doc.id, ...doc.data() } as T);
 
 // Seed Data - Updated to Edmonton
 const seedStores: Partial<Store>[] = [
-  { name: 'Edmonton Distribution Ctr', address: '8612 118 Ave NW, Edmonton', contactPerson: 'Manager', phone: '780-555-0100', email: 'dist@edmonton.com', lat: 53.5706, lng: -113.4682, paymentMethod: 'credit' },
-  { name: 'Downtown Market', address: '10200 102 Ave NW, Edmonton', contactPerson: 'John Doe', phone: '780-555-0101', email: 'john@market.com', lat: 53.5437, lng: -113.4975, paymentMethod: 'cash' },
-  { name: 'West Edmonton Mall Store', address: '8882 170 St NW, Edmonton', contactPerson: 'Jane Smith', phone: '780-555-0102', email: 'jane@wem.com', lat: 53.5225, lng: -113.6242, paymentMethod: 'credit' },
+  { name: 'Edmonton Distribution Ctr', address: '8612 118 Ave NW, Edmonton', contactPerson: 'Manager', phone: '780-555-0100', email: 'dist@edmonton.com', lat: 53.5706, lng: -113.4682, paymentMethod: 'credit', sequence: 1 },
+  { name: 'Downtown Market', address: '10200 102 Ave NW, Edmonton', contactPerson: 'John Doe', phone: '780-555-0101', email: 'john@market.com', lat: 53.5437, lng: -113.4975, paymentMethod: 'cash', sequence: 2 },
+  { name: 'West Edmonton Mall Store', address: '8882 170 St NW, Edmonton', contactPerson: 'Jane Smith', phone: '780-555-0102', email: 'jane@wem.com', lat: 53.5225, lng: -113.6242, paymentMethod: 'credit', sequence: 3 },
 ];
 
 const seedProducts: Partial<Product>[] = [
@@ -319,13 +319,17 @@ export const storageService = {
   // --- STORES ---
   getStores: async (): Promise<Store[]> => {
     const snapshot = await getDocs(collection(db, 'stores'));
-    return snapshot.docs.map(doc => mapDoc<Store>(doc));
+    return snapshot.docs
+      .map(doc => mapDoc<Store>(doc))
+      .sort((a, b) => (a.sequence || 999) - (b.sequence || 999));
   },
   
   subscribeToStores: (callback: (stores: Store[]) => void) => {
     const q = query(collection(db, 'stores'));
     return onSnapshot(q, (snapshot) => {
-        const stores = snapshot.docs.map(doc => mapDoc<Store>(doc));
+        const stores = snapshot.docs
+          .map(doc => mapDoc<Store>(doc))
+          .sort((a, b) => (a.sequence || 999) - (b.sequence || 999));
         callback(stores);
     });
   },

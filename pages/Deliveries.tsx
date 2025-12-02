@@ -10,10 +10,11 @@ import { formatEdmontonDate, formatEdmontonTime, getEdmontonISOString, toEdmonto
 // --- Sub-component for individual delivery card ---
 const DeliveryCard: React.FC<{ 
     delivery: Delivery; 
+    storeSequence?: number;
     onEdit: (e: React.MouseEvent, d: Delivery) => void;
     onDelete: (e: React.MouseEvent, id: string) => void;
     onMarkPaid: (e: React.MouseEvent, d: Delivery) => void;
-}> = ({ delivery, onEdit, onDelete, onMarkPaid }) => {
+}> = ({ delivery, storeSequence, onEdit, onDelete, onMarkPaid }) => {
   const [expanded, setExpanded] = useState(false);
 
   const totalValue = delivery.items.reduce((sum, item) => sum + (item.quantity * item.priceAtDelivery), 0);
@@ -30,8 +31,13 @@ const DeliveryCard: React.FC<{
       {/* Compact Header Row */}
       <div className="p-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 overflow-hidden">
-           <div className={`p-2.5 rounded-xl shrink-0 transition-colors duration-200 ${expanded ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100'}`}>
+           <div className={`p-2.5 rounded-xl shrink-0 transition-colors duration-200 relative ${expanded ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100'}`}>
               <StoreIcon size={20} />
+              {storeSequence && (
+                  <div className="absolute -top-1 -right-1 bg-slate-900 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center shadow-sm border border-white z-10">
+                      {storeSequence}
+                  </div>
+              )}
            </div>
            <div className="min-w-0">
               <h3 className="font-bold text-slate-800 text-sm sm:text-base truncate">{delivery.storeName}</h3>
@@ -462,6 +468,7 @@ export const Deliveries: React.FC = () => {
     }
   };
 
+  // Filter and Sort Logic
   const filteredDeliveries = deliveries.filter(d => {
     const searchMatch = d.storeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         d.driverName.toLowerCase().includes(searchTerm.toLowerCase());
@@ -472,9 +479,22 @@ export const Deliveries: React.FC = () => {
     }
 
     // Daily View (Edmonton Time)
-    // d.timestamp might be ISO or Z, getEdmontonISOString handles both via Date constructor
     const deliveryDateStr = getEdmontonISOString(d.timestamp);
     return searchMatch && deliveryDateStr === dateFilter;
+  }).sort((a, b) => {
+     if (filterMode === 'daily') {
+         // Sort by Store Sequence if available, else fallback to sequence 999
+         const storeA = stores.find(s => s.id === a.storeId);
+         const storeB = stores.find(s => s.id === b.storeId);
+         const seqA = storeA?.sequence || 999;
+         const seqB = storeB?.sequence || 999;
+         
+         // If sequences differ, sort ascending (1, 2, 3...)
+         if (seqA !== seqB) return seqA - seqB;
+     }
+     
+     // Default / Secondary Sort: Newest first
+     return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
   });
 
   const totalPendingAmount = deliveries
@@ -613,15 +633,19 @@ export const Deliveries: React.FC = () => {
                  )}
                </div>
              ) : (
-               filteredDeliveries.map((delivery) => (
-                   <DeliveryCard 
-                      key={delivery.id} 
-                      delivery={delivery} 
-                      onEdit={handleEdit}
-                      onDelete={handleDeleteClick}
-                      onMarkPaid={handleMarkPaid}
-                   />
-               ))
+               filteredDeliveries.map((delivery) => {
+                   const store = stores.find(s => s.id === delivery.storeId);
+                   return (
+                       <DeliveryCard 
+                          key={delivery.id} 
+                          delivery={delivery}
+                          storeSequence={store?.sequence}
+                          onEdit={handleEdit}
+                          onDelete={handleDeleteClick}
+                          onMarkPaid={handleMarkPaid}
+                       />
+                   );
+               })
              )}
           </div>
         </>
@@ -655,7 +679,7 @@ export const Deliveries: React.FC = () => {
                                 className="w-full p-4 pl-4 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none cursor-pointer font-medium text-slate-700 text-base"
                             >
                                 <option value="">-- Choose Store --</option>
-                                {stores.map(s => <option key={s.id} value={s.id}>{s.name} - {s.address}</option>)}
+                                {stores.map(s => <option key={s.id} value={s.id}>{s.sequence ? `#${s.sequence} - ` : ''}{s.name} - {s.address}</option>)}
                             </select>
                             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
                                 <ArrowRight size={16} className="rotate-90" />
