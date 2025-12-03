@@ -1,4 +1,5 @@
 
+
 export interface Store {
   id: string;
   name: string;
@@ -39,6 +40,7 @@ export interface Delivery {
   status: 'completed' | 'pending';
   paymentMethod: 'cash' | 'credit';
   paymentStatus: 'paid' | 'pending';
+  paymentCollectedAt?: string; // When payment was actually collected
   lastEditedBy?: string;
   lastEditedAt?: string;
 }

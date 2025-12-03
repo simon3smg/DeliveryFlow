@@ -1,6 +1,8 @@
 
+
+
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Calendar, Printer, Loader2, Package, DollarSign, Banknote, CreditCard, FileText, X, Truck, ArrowLeft } from 'lucide-react';
+import { Sparkles, Calendar, Printer, Loader2, Package, DollarSign, Banknote, CreditCard, FileText, X, Truck, ArrowLeft, History, TrendingUp } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { generateDeliveryReportInsight } from '../services/geminiService';
 import { Delivery, Store as StoreType } from '../types';
@@ -438,16 +440,34 @@ export const Reports: React.FC = () => {
     else if (timeframe === 'yearly') setDateValue(getEdmontonYear());
   }, [timeframe]);
 
+  // "Sales" Logic: Deliveries made in this period
   const filteredDeliveries = deliveries.filter(d => getEdmontonISOString(d.timestamp).startsWith(dateValue));
   
   const totalRevenue = filteredDeliveries.reduce((acc, d) => 
     acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0
   );
 
-  const totalCashReceived = filteredDeliveries
-    .filter(d => d.paymentMethod === 'cash' && d.paymentStatus !== 'pending')
-    .reduce((acc, d) => acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0);
-  
+  // "Cash Flow" Logic: Cash collected in this period
+  const cashCollectedInPeriod = deliveries.filter(d => {
+      if (d.paymentMethod !== 'cash' || d.paymentStatus !== 'paid') return false;
+      const collectionDate = d.paymentCollectedAt || d.timestamp;
+      return getEdmontonISOString(collectionDate).startsWith(dateValue);
+  });
+
+  const totalCashCollectedActual = cashCollectedInPeriod.reduce((acc, d) => 
+    acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0
+  );
+
+  // Calculate "Recovered" cash (Collected in this period but delivered in a previous period)
+  const recoveredCash = cashCollectedInPeriod.reduce((acc, d) => {
+      const deliveryDateStr = getEdmontonISOString(d.timestamp);
+      // If delivery date does not start with current dateValue, it's from a different (past) period
+      if (!deliveryDateStr.startsWith(dateValue)) {
+          return acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0);
+      }
+      return acc;
+  }, 0);
+
   const totalCashPending = filteredDeliveries
     .filter(d => d.paymentMethod === 'cash' && d.paymentStatus === 'pending')
     .reduce((acc, d) => acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0);
@@ -456,9 +476,11 @@ export const Reports: React.FC = () => {
     .filter(d => d.paymentMethod !== 'cash') 
     .reduce((acc, d) => acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0);
 
+  // Store Breakdown Logic
   const deliveriesByStore = stores.map(store => {
     const storeDeliveries = filteredDeliveries.filter(d => d.storeId === store.id);
     
+    // Note: These values represent "Sales" activity for the store in this period
     const cashReceived = storeDeliveries
         .filter(d => d.paymentMethod === 'cash' && d.paymentStatus !== 'pending')
         .reduce((acc, d) => acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0);
@@ -592,29 +614,32 @@ export const Reports: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <SummaryCard 
-            title="Total Revenue" 
+            title="Total Sales" 
             value={`$${totalRevenue.toFixed(0)}`} 
             icon={<DollarSign size={28} />} 
             colorClass="bg-indigo-500" 
         />
         <SummaryCard 
-            title="Cash Received" 
-            value={`$${totalCashReceived.toFixed(0)}`} 
-            subText={totalCashPending > 0 ? `$${totalCashPending.toFixed(0)} pending collection` : ''}
+            title="Total Cash Collected" 
+            value={`$${totalCashCollectedActual.toFixed(0)}`} 
+            subText={recoveredCash > 0 ? `$${recoveredCash.toFixed(0)} from previous dues` : 'Includes recovered amounts'}
             icon={<Banknote size={28} />} 
             colorClass="bg-emerald-500" 
         />
+        {recoveredCash > 0 && (
+            <SummaryCard 
+                title="Outstanding Collected" 
+                value={`$${recoveredCash.toFixed(0)}`} 
+                subText="Recovered arrears"
+                icon={<TrendingUp size={28} />} 
+                colorClass="bg-violet-500" 
+            />
+        )}
         <SummaryCard 
-            title="Credit Given" 
-            value={`$${totalCredit.toFixed(0)}`} 
-            icon={<CreditCard size={28} />} 
-            colorClass="bg-blue-500" 
-        />
-        <SummaryCard 
-            title="Total Deliveries" 
-            value={filteredDeliveries.length} 
-            icon={<Package size={28} />} 
-            colorClass="bg-slate-500" 
+            title="Pending Collection" 
+            value={`$${totalCashPending.toFixed(0)}`} 
+            icon={<Banknote size={28} />} 
+            colorClass="bg-amber-500" 
         />
       </div>
 
@@ -658,7 +683,7 @@ export const Reports: React.FC = () => {
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-xs">
                         <div className="bg-emerald-50 p-2 rounded-lg">
-                            <p className="text-emerald-600 font-medium">Cash</p>
+                            <p className="text-emerald-600 font-medium">Cash Sales</p>
                             <p className="text-emerald-700 font-bold">${store.cashReceived.toFixed(0)}</p>
                         </div>
                         <div className="bg-amber-50 p-2 rounded-lg">
@@ -692,14 +717,14 @@ export const Reports: React.FC = () => {
       {/* Desktop Table View */}
       <div className="hidden md:block bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
         <div className="p-6 border-b border-slate-50 bg-slate-50/30">
-            <h3 className="font-bold text-lg text-slate-800">{timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Store Breakdown</h3>
+            <h3 className="font-bold text-lg text-slate-800">{timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Store Activity (Sales)</h3>
         </div>
         <table className="w-full text-left">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500 font-bold tracking-wider">
                 <tr>
                     <th className="p-5 pl-6">Store Name</th>
                     <th className="p-5 text-center">Deliveries</th>
-                    <th className="p-5 text-right text-emerald-600">Cash Received</th>
+                    <th className="p-5 text-right text-emerald-600">Cash Sales</th>
                     <th className="p-5 text-right text-amber-600">Cash Pending</th>
                     <th className="p-5 text-right text-blue-600">Credit Given</th>
                     <th className="p-5 text-center">Actions</th>
@@ -738,16 +763,7 @@ export const Reports: React.FC = () => {
                     ))
                 )}
             </tbody>
-            <tfoot className="bg-slate-50 font-bold text-slate-700 border-t border-slate-200">
-                 <tr>
-                    <td className="p-5 pl-6">Totals</td>
-                    <td className="p-5 text-center">{filteredDeliveries.length}</td>
-                    <td className="p-5 text-right text-emerald-700">${totalCashReceived.toFixed(2)}</td>
-                    <td className="p-5 text-right text-amber-700">${totalCashPending.toFixed(2)}</td>
-                    <td className="p-5 text-right text-blue-700">${totalCredit.toFixed(2)}</td>
-                    <td></td>
-                 </tr>
-            </tfoot>
+            {/* Note: Table totals reflect Sales Activity, not Cash Flow. Total Cash Collected above is accurate for money in hand. */}
         </table>
       </div>
     </div>

@@ -1,9 +1,9 @@
 
+
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, MapPin, Package, X, Trash2, CheckCircle, ArrowRight, User, Store as StoreIcon, Loader2, Calendar, Edit2, ChevronLeft, ChevronRight, Clock, ChevronDown, ChevronUp, AlertTriangle, CreditCard, Banknote, DollarSign, Wallet, Minus } from 'lucide-react';
+import { Plus, Search, MapPin, Package, X, Trash2, CheckCircle, ArrowRight, User, Store as StoreIcon, Loader2, Calendar, Edit2, ChevronLeft, ChevronRight, Clock, ChevronDown, ChevronUp, AlertTriangle, CreditCard, Banknote, DollarSign, Wallet, Minus, TrendingUp } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Delivery, Store, Product, DeliveryItem, User as UserType } from '../types';
-import { SignaturePad } from '../components/SignaturePad';
 import { useLocation } from 'react-router-dom';
 import { formatEdmontonDate, formatEdmontonTime, getEdmontonISOString, toEdmontonISOString, getCurrentEdmontonISOString } from '../services/dateUtils';
 
@@ -83,9 +83,13 @@ const DeliveryCard: React.FC<{
                  <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm">
                     <Clock size={12} className="text-indigo-500"/> <span className="font-medium text-slate-700">{formatEdmontonTime(delivery.timestamp)}</span>
                  </span>
-                 <span className="sm:hidden flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-100 px-2 py-1 rounded font-bold uppercase tracking-wide text-[10px]">
-                    <CheckCircle size={10}/> {delivery.status}
-                 </span>
+                 
+                 {/* Payment Collection Info */}
+                 {delivery.paymentMethod === 'cash' && delivery.paymentStatus === 'paid' && delivery.paymentCollectedAt && (
+                     <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded shadow-sm">
+                        <Banknote size={12}/> Collected: {formatEdmontonDate(delivery.paymentCollectedAt)}
+                     </span>
+                 )}
               </div>
               
               {/* Unpaid Warning Banner */}
@@ -206,7 +210,6 @@ export const Deliveries: React.FC = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedStoreId, setSelectedStoreId] = useState('');
   const [cart, setCart] = useState<DeliveryItem[]>([]);
-  const [signature, setSignature] = useState<string | null>(null);
   const [notes, setNotes] = useState('');
   const [cashReceived, setCashReceived] = useState(true);
 
@@ -314,7 +317,6 @@ export const Deliveries: React.FC = () => {
       setEditingId(delivery.id);
       setSelectedStoreId(delivery.storeId);
       setCart(delivery.items);
-      setSignature(delivery.signatureDataUrl || null);
       setNotes(delivery.notes || '');
       // If it's a cash delivery and status is NOT paid (i.e. pending), then cashReceived is false.
       // Default to true for paid or undefined (legacy).
@@ -337,6 +339,7 @@ export const Deliveries: React.FC = () => {
         await storageService.updateDelivery({
             ...delivery,
             paymentStatus: 'paid',
+            paymentCollectedAt: getCurrentEdmontonISOString(),
             lastEditedBy: currentUser?.name,
             lastEditedAt: getCurrentEdmontonISOString()
         });
@@ -391,45 +394,74 @@ export const Deliveries: React.FC = () => {
     let id = Date.now().toString();
     let driverName = currentUser?.name || 'Unknown Driver';
 
+    // Track payment collection date
+    let paymentCollectedAt: string | undefined = undefined;
+
     if (view === 'edit' && editingId) {
         const original = deliveries.find(d => d.id === editingId);
         if (original) {
             // Even when editing, force the format to be Edmonton offset
-            // This fixes legacy data that might be in UTC 'Z' format
             timestamp = toEdmontonISOString(original.timestamp);
             id = original.id;
             driverName = original.driverName || driverName;
+            
+            // Preserve existing payment date if available, or fallback to timestamp if it was paid
+            paymentCollectedAt = original.paymentCollectedAt;
+            if (original.paymentStatus === 'paid' && !paymentCollectedAt) {
+                paymentCollectedAt = original.timestamp;
+            }
         }
     }
 
-    // Determine payment status
+    // Determine payment status and collection date
     let paymentStatus: 'paid' | 'pending' = 'pending';
     
     if (store?.paymentMethod === 'cash') {
         paymentStatus = cashReceived ? 'paid' : 'pending';
+        
+        if (paymentStatus === 'paid') {
+            // If paying now and no date set yet, set it.
+            // If creating new: use delivery timestamp
+            // If editing: use current time if it wasn't paid before
+            if (!paymentCollectedAt) {
+                paymentCollectedAt = (view === 'create') ? timestamp : getCurrentEdmontonISOString();
+            }
+        } else {
+             paymentCollectedAt = undefined; // Reset if moving back to pending
+        }
     } else {
         paymentStatus = 'pending'; // Credit is always collected later
+        paymentCollectedAt = undefined;
     }
 
-    const payload: Delivery = {
+    // Construct payload strictly avoiding undefined values which cause Firestore errors
+    const payload: any = {
       id,
       storeId: selectedStoreId,
       storeName: store?.name || 'Unknown Store',
       driverName,
       items: cart,
-      signatureDataUrl: signature || '',
-      notes,
+      signatureDataUrl: '',
+      notes: notes || '',
       timestamp,
       status: 'completed',
       paymentMethod: store?.paymentMethod || 'credit',
-      paymentStatus: paymentStatus
+      paymentStatus: paymentStatus,
     };
+
+    // Only add if defined
+    if (paymentCollectedAt) {
+        payload.paymentCollectedAt = paymentCollectedAt;
+    }
 
     // If editing, add tracking metadata
     if (view === 'edit') {
         payload.lastEditedBy = currentUser?.name;
         payload.lastEditedAt = getCurrentEdmontonISOString();
     }
+
+    // Clean up any undefined values
+    Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
 
     try {
         if (view === 'edit') {
@@ -452,7 +484,6 @@ export const Deliveries: React.FC = () => {
     setEditingId(null);
     setSelectedStoreId('');
     setCart([]);
-    setSignature(null);
     setNotes('');
     setCashReceived(true);
     if (products.length > 0) {
@@ -477,9 +508,45 @@ export const Deliveries: React.FC = () => {
     return searchMatch && deliveryDateStr === dateFilter;
   });
 
+  // --- Calculations for Widgets ---
+
+  // 1. Total Pending Cash (All time)
   const totalPendingAmount = deliveries
     .filter(d => d.paymentMethod === 'cash' && d.paymentStatus === 'pending')
     .reduce((acc, d) => acc + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0), 0);
+
+  // 2. Total Cash Collected TODAY (For Driver Deposit)
+  // This includes any cash delivery PAID today, even if the delivery was made weeks ago.
+  const todayStr = getEdmontonISOString();
+  const cashCollectedToday = deliveries.reduce((total, d) => {
+      // Must be paid cash
+      if (d.paymentMethod === 'cash' && d.paymentStatus === 'paid') {
+          // Check payment date. Fallback to timestamp if paymentCollectedAt missing (legacy data)
+          const pDate = d.paymentCollectedAt ? getEdmontonISOString(d.paymentCollectedAt) : getEdmontonISOString(d.timestamp);
+          
+          if (pDate === todayStr) {
+              return total + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0);
+          }
+      }
+      return total;
+  }, 0);
+
+  // 3. Breakdown: How much of today's cash was from TODAY'S deliveries vs OUTSTANDING?
+  const cashFromTodayDeliveries = deliveries.reduce((total, d) => {
+      if (d.paymentMethod === 'cash' && d.paymentStatus === 'paid') {
+          const pDate = d.paymentCollectedAt ? getEdmontonISOString(d.paymentCollectedAt) : getEdmontonISOString(d.timestamp);
+          const dDate = getEdmontonISOString(d.timestamp);
+          
+          // Paid Today AND Delivered Today
+          if (pDate === todayStr && dDate === todayStr) {
+              return total + d.items.reduce((s, i) => s + (i.quantity * i.priceAtDelivery), 0);
+          }
+      }
+      return total;
+  }, 0);
+  
+  const cashFromOutstanding = cashCollectedToday - cashFromTodayDeliveries;
+
 
   if (loading && view === 'list' && deliveries.length === 0) {
       return (
@@ -494,6 +561,7 @@ export const Deliveries: React.FC = () => {
       
       {view === 'list' && (
         <>
+          {/* Header Controls */}
           <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm sticky top-0 z-20 md:static">
              
              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full xl:w-auto">
@@ -570,24 +638,71 @@ export const Deliveries: React.FC = () => {
                  </button>
              </div>
           </div>
+          
+          {/* --- TOP WIDGETS --- */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* 1. Cash Collected Today Widget (Always visible or contextual) */}
+            <div className="bg-emerald-600 text-white rounded-3xl p-6 shadow-lg shadow-emerald-200 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
+                <div className="relative z-10 flex justify-between items-start">
+                    <div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <div className="p-2 bg-emerald-500/30 rounded-lg border border-emerald-400/30">
+                                <Wallet size={20} className="text-white" />
+                            </div>
+                            <span className="font-bold text-emerald-100 uppercase text-xs tracking-wider">Deposit Ready</span>
+                        </div>
+                        <h3 className="text-3xl font-bold tracking-tight">${cashCollectedToday.toFixed(2)}</h3>
+                        <p className="text-emerald-100 text-xs mt-1">Total cash collected today ({formatEdmontonDate(new Date())})</p>
+                    </div>
+                </div>
 
-          {/* Pending Cash Summary Banner */}
-          {filterMode === 'pending' && filteredDeliveries.length > 0 && (
-              <div className="bg-red-50 border border-red-100 rounded-3xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-2">
-                 <div className="flex items-center gap-4">
-                     <div className="p-3 bg-white rounded-2xl border border-red-100 text-red-500 shadow-sm">
-                        <Wallet size={24} />
+                {/* Breakdown of Collected Cash */}
+                {(cashFromOutstanding > 0) && (
+                    <div className="mt-4 pt-3 border-t border-emerald-500/30 flex gap-4 text-xs">
+                        <div>
+                            <span className="block text-emerald-200 font-medium">New Sales</span>
+                            <span className="font-bold">${cashFromTodayDeliveries.toFixed(0)}</span>
+                        </div>
+                        <div className="flex-1">
+                            <span className="block text-emerald-100 font-bold flex items-center gap-1">
+                                Outstanding Collected <TrendingUp size={12}/>
+                            </span>
+                            <span className="font-bold bg-white/20 px-1.5 rounded text-white">${cashFromOutstanding.toFixed(0)}</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* 2. Outstanding Balance Widget (Only in Pending Mode or if large amount) */}
+            {(filterMode === 'pending' || totalPendingAmount > 0) && (
+                <div 
+                    onClick={() => setFilterMode('pending')}
+                    className={`rounded-3xl p-6 border shadow-sm flex flex-col justify-between cursor-pointer transition-all ${filterMode === 'pending' ? 'bg-red-50 border-red-100 shadow-md ring-1 ring-red-200' : 'bg-white border-slate-100 hover:border-red-100 hover:shadow-md'}`}
+                >
+                     <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${filterMode === 'pending' ? 'bg-white text-red-500 shadow-sm' : 'bg-red-50 text-red-500'}`}>
+                                <AlertTriangle size={20} />
+                            </div>
+                            <div>
+                                <h3 className={`font-bold text-lg ${filterMode === 'pending' ? 'text-red-900' : 'text-slate-800'}`}>Outstanding</h3>
+                                <p className={`text-xs ${filterMode === 'pending' ? 'text-red-700' : 'text-slate-500'}`}>Unpaid cash deliveries</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                             <h3 className="text-2xl font-bold text-red-600 tracking-tight">${totalPendingAmount.toFixed(2)}</h3>
+                        </div>
                      </div>
-                     <div>
-                        <h3 className="font-bold text-red-900 text-lg">Outstanding Cash</h3>
-                        <p className="text-red-600/80 text-sm">Total pending collection from cash customers</p>
-                     </div>
-                 </div>
-                 <div className="text-3xl font-bold text-red-700 tracking-tight">
-                    ${totalPendingAmount.toFixed(2)}
-                 </div>
-              </div>
-          )}
+                     {filterMode !== 'pending' && (
+                         <div className="mt-3 text-xs text-indigo-600 font-bold flex items-center gap-1 self-end">
+                             View Details <ArrowRight size={12} />
+                         </div>
+                     )}
+                </div>
+            )}
+          </div>
 
           <div className="flex flex-col gap-3">
              {filteredDeliveries.length === 0 ? (
@@ -785,41 +900,15 @@ export const Deliveries: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-8">
-                        {/* Signature */}
-                        <div className="space-y-3">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                                3. Signature <span className="text-slate-300 font-normal ml-1">(Optional)</span>
-                            </label>
-                            
-                            {signature ? (
-                                <div className="border-2 border-slate-200 rounded-2xl bg-white overflow-hidden h-40 w-full relative group shadow-sm">
-                                    <img src={signature} alt="Signature" className="w-full h-full object-contain" />
-                                    <div className="absolute inset-0 bg-slate-900/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center gap-2 backdrop-blur-sm">
-                                        <p className="text-white font-bold text-sm">Signature Captured</p>
-                                        <button 
-                                            onClick={() => setSignature(null)} 
-                                            className="bg-white text-red-500 px-4 py-2 rounded-lg font-bold shadow-lg text-xs hover:bg-red-50"
-                                        >
-                                            Redo Signature
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <SignaturePad onEnd={setSignature} />
-                            )}
-                        </div>
-
-                        {/* Notes */}
-                        <div className="space-y-3">
-                            <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Notes</label>
-                            <textarea 
-                                value={notes}
-                                onChange={(e) => setNotes(e.target.value)}
-                                className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none h-40 resize-none bg-slate-50 focus:bg-white transition-colors text-base sm:text-sm"
-                                placeholder="Any delivery notes or issues..."
-                            />
-                        </div>
+                    {/* Notes */}
+                    <div className="space-y-3">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">3. Notes</label>
+                        <textarea 
+                            value={notes}
+                            onChange={(e) => setNotes(e.target.value)}
+                            className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none h-40 resize-none bg-slate-50 focus:bg-white transition-colors text-base sm:text-sm"
+                            placeholder="Any delivery notes or issues..."
+                        />
                     </div>
 
                 </div>
