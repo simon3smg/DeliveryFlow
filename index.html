@@ -67,8 +67,16 @@
       ::-webkit-scrollbar-track { background: transparent; }
       ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
       ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-      html.dark ::-webkit-scrollbar-thumb { background: #475569; }
-      html.dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+      html.dark ::-webkit-scrollbar-thumb { background: #334155; }
+      html.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+      /* Dark Mode Map Inversion */
+      html.dark .leaflet-tile-pane {
+        filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+      }
+      html.dark .leaflet-container {
+        background: #0f172a; /* Slate 900 */
+      }
       
       @media print {
         .no-print { display: none !important; }
@@ -107,11 +115,11 @@
 }
 </script>
 </head>
-  <body class="text-slate-900 antialiased overflow-hidden">
-    <div id="root" class="flex h-screen w-full items-center justify-center bg-slate-50 text-indigo-600">
+  <body class="text-slate-900 dark:text-slate-100 antialiased overflow-hidden">
+    <div id="root" class="flex h-screen w-full items-center justify-center bg-slate-50 dark:bg-slate-950 text-indigo-600 dark:text-indigo-400">
         <!-- Initial Loader -->
         <div class="flex flex-col items-center gap-4">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
             <p class="font-medium animate-pulse">Loading DeliveryFlow...</p>
         </div>
     </div>

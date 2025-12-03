@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Calendar, Printer, Loader2, Package, DollarSign, Banknote, CreditCard, FileText, X, Truck, ArrowLeft, History, TrendingUp } from 'lucide-react';
 import { storageService } from '../services/storageService';
@@ -117,7 +115,7 @@ const InvoiceTemplate = ({ data, onClose }: { data: InvoiceData, onClose: () => 
   const invoiceNum = `${year}${isMonthly ? month.split('-')[1] : '00'}-${store.id.substring(0,3).toUpperCase()}`;
 
   return (
-    <div className="report-modal fixed inset-0 z-50 bg-slate-200/80 backdrop-blur-sm overflow-auto flex justify-center py-8">
+    <div className="report-modal fixed inset-0 z-50 bg-slate-200/80 dark:bg-slate-900/80 backdrop-blur-sm overflow-auto flex justify-center py-8">
       <PrintStyles />
       
       {/* Letter Size Paper: 8.5in x 11in ~ 816px x 1056px at 96dpi */}
@@ -128,12 +126,12 @@ const InvoiceTemplate = ({ data, onClose }: { data: InvoiceData, onClose: () => 
             <button onClick={() => window.print()} className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg hover:bg-emerald-700 hover:scale-110 transition-all flex items-center gap-2">
                 <Printer size={20} /> Print Invoice
             </button>
-            <button onClick={onClose} className="bg-white text-slate-700 px-5 py-2.5 rounded-xl font-bold shadow-lg hover:bg-slate-50 transition-all flex items-center gap-2">
+            <button onClick={onClose} className="bg-white text-slate-700 px-5 py-2.5 rounded-xl font-bold shadow-lg hover:bg-slate-50 transition-all flex items-center gap-2 border border-slate-200">
                 <X size={20} /> Close
             </button>
          </div>
 
-         <div className="flex-1">
+         <div className="flex-1 text-slate-900">
              {/* Header */}
              <div className="flex justify-between items-start mb-8">
                 <div className="w-32 h-32 relative">
@@ -273,7 +271,7 @@ const StatementTemplate = ({ data, onClose }: { data: StatementData, onClose: ()
     const notYetDue = totalOutstanding - overdueAmount;
 
     return (
-      <div className="report-modal fixed inset-0 z-50 bg-slate-200/80 backdrop-blur-sm overflow-auto flex justify-center py-8">
+      <div className="report-modal fixed inset-0 z-50 bg-slate-200/80 dark:bg-slate-900/80 backdrop-blur-sm overflow-auto flex justify-center py-8">
         <PrintStyles />
         
         {/* Letter Size Paper */}
@@ -284,12 +282,12 @@ const StatementTemplate = ({ data, onClose }: { data: StatementData, onClose: ()
                 <button onClick={() => window.print()} className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold shadow-lg hover:bg-indigo-700 hover:scale-110 transition-all flex items-center gap-2">
                     <Printer size={20} /> Print Statement
                 </button>
-                <button onClick={onClose} className="bg-white text-slate-700 px-5 py-2.5 rounded-xl font-bold shadow-lg hover:bg-slate-50 transition-all flex items-center gap-2">
+                <button onClick={onClose} className="bg-white text-slate-700 px-5 py-2.5 rounded-xl font-bold shadow-lg hover:bg-slate-50 transition-all flex items-center gap-2 border border-slate-200">
                     <X size={20} /> Close
                 </button>
             </div>
 
-            <div className="flex-1">
+            <div className="flex-1 text-slate-900">
                 {/* Header */}
                 <div className="flex justify-between mb-12">
                     <div className="flex gap-4">
@@ -558,20 +556,20 @@ export const Reports: React.FC = () => {
   };
 
   const SummaryCard = ({ title, value, icon, colorClass, subText }: any) => (
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between h-32 print:border print:border-slate-300 relative overflow-hidden group">
+      <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between h-32 print:border print:border-slate-300 relative overflow-hidden group">
           <div className={`absolute -right-6 -top-6 w-20 h-20 rounded-full ${colorClass} opacity-5 group-hover:scale-125 transition-transform duration-500 ease-out`}></div>
           <div>
-              <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
-              <p className={`text-3xl font-bold tracking-tight ${colorClass.replace('bg-', 'text-').replace('-500', '-600').replace('-600', '-700')}`}>{value}</p>
-              {subText && <p className="text-xs text-slate-400 mt-1">{subText}</p>}
+              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">{title}</p>
+              <p className={`text-3xl font-bold tracking-tight ${colorClass.replace('bg-', 'text-').replace('-500', '-600').replace('-600', '-700').replace('-800', '-400')}`}>{value}</p>
+              {subText && <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{subText}</p>}
           </div>
-          <div className={`p-4 rounded-xl ${colorClass} bg-opacity-10 text-${colorClass.split('-')[1]}-600`}>
+          <div className={`p-4 rounded-xl ${colorClass} bg-opacity-10 text-${colorClass.split('-')[1]}-600 dark:text-${colorClass.split('-')[1]}-400`}>
               {icon}
           </div>
       </div>
   );
 
-  if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-indigo-600" size={32}/></div>;
+  if (loading) return <div className="flex h-96 items-center justify-center"><Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={32}/></div>;
 
   if (invoiceData) {
       return <InvoiceTemplate data={invoiceData} onClose={() => setInvoiceData(null)} />;
@@ -585,13 +583,13 @@ export const Reports: React.FC = () => {
       <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full xl:w-auto">
              <div>
-                 <h2 className="hidden md:block text-slate-500 mb-1">Financial Report</h2>
+                 <h2 className="hidden md:block text-slate-500 dark:text-slate-400 mb-1">Financial Report</h2>
                  <div className="flex items-center gap-2">
                     <div className="relative">
                         <select 
                             value={timeframe}
                             onChange={(e) => setTimeframe(e.target.value as Timeframe)}
-                            className="bg-white border border-slate-200 rounded-xl py-2 pl-3 pr-8 text-sm font-semibold text-slate-700 shadow-sm appearance-none focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-3 pr-8 text-sm font-semibold text-slate-700 dark:text-slate-200 shadow-sm appearance-none focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
                         >
                             <option value="daily">Daily</option>
                             <option value="monthly">Monthly</option>
@@ -602,10 +600,10 @@ export const Reports: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="bg-white p-1 px-3 rounded-xl shadow-sm border border-slate-200">
-                        {timeframe === 'daily' && <input type="date" value={dateValue} onChange={(e) => setDateValue(e.target.value)} className="bg-transparent border-none text-sm font-semibold text-slate-700 focus:ring-0 cursor-pointer outline-none"/>}
-                        {timeframe === 'monthly' && <input type="month" value={dateValue} onChange={(e) => setDateValue(e.target.value)} className="bg-transparent border-none text-sm font-semibold text-slate-700 focus:ring-0 cursor-pointer outline-none"/>}
-                        {timeframe === 'yearly' && <input type="number" min="2000" max="2099" step="1" value={dateValue} onChange={(e) => setDateValue(e.target.value)} className="bg-transparent border-none text-sm font-semibold text-slate-700 focus:ring-0 cursor-pointer w-20 outline-none"/>}
+                    <div className="bg-white dark:bg-slate-900 p-1 px-3 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700">
+                        {timeframe === 'daily' && <input type="date" value={dateValue} onChange={(e) => setDateValue(e.target.value)} className="bg-transparent border-none text-sm font-semibold text-slate-700 dark:text-slate-200 focus:ring-0 cursor-pointer outline-none"/>}
+                        {timeframe === 'monthly' && <input type="month" value={dateValue} onChange={(e) => setDateValue(e.target.value)} className="bg-transparent border-none text-sm font-semibold text-slate-700 dark:text-slate-200 focus:ring-0 cursor-pointer outline-none"/>}
+                        {timeframe === 'yearly' && <input type="number" min="2000" max="2099" step="1" value={dateValue} onChange={(e) => setDateValue(e.target.value)} className="bg-transparent border-none text-sm font-semibold text-slate-700 dark:text-slate-200 focus:ring-0 cursor-pointer w-20 outline-none"/>}
                     </div>
                  </div>
              </div>
@@ -617,14 +615,14 @@ export const Reports: React.FC = () => {
             title="Total Sales" 
             value={`$${totalRevenue.toFixed(0)}`} 
             icon={<DollarSign size={28} />} 
-            colorClass="bg-indigo-500" 
+            colorClass="bg-indigo-500 dark:bg-indigo-600" 
         />
         <SummaryCard 
             title="Total Cash Collected" 
             value={`$${totalCashCollectedActual.toFixed(0)}`} 
             subText={recoveredCash > 0 ? `$${recoveredCash.toFixed(0)} from previous dues` : 'Includes recovered amounts'}
             icon={<Banknote size={28} />} 
-            colorClass="bg-emerald-500" 
+            colorClass="bg-emerald-500 dark:bg-emerald-600" 
         />
         {recoveredCash > 0 && (
             <SummaryCard 
@@ -632,79 +630,79 @@ export const Reports: React.FC = () => {
                 value={`$${recoveredCash.toFixed(0)}`} 
                 subText="Recovered arrears"
                 icon={<TrendingUp size={28} />} 
-                colorClass="bg-violet-500" 
+                colorClass="bg-violet-500 dark:bg-violet-600" 
             />
         )}
         <SummaryCard 
             title="Pending Collection" 
             value={`$${totalCashPending.toFixed(0)}`} 
             icon={<Banknote size={28} />} 
-            colorClass="bg-amber-500" 
+            colorClass="bg-amber-500 dark:bg-amber-600" 
         />
       </div>
 
       <div className="relative group">
         <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500 to-violet-600 rounded-2xl opacity-30 group-hover:opacity-50 blur transition duration-500"></div>
-        <div className="relative bg-white rounded-2xl p-8">
+        <div className="relative bg-white dark:bg-slate-900 rounded-2xl p-8">
             <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg text-white shadow-lg shadow-indigo-200">
+                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg text-white shadow-lg shadow-indigo-200 dark:shadow-none">
                         <Sparkles size={20} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-slate-800">AI Executive Summary</h3>
-                        <p className="text-xs text-slate-500">Powered by Gemini models</p>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white">AI Executive Summary</h3>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Powered by Gemini models</p>
                     </div>
                 </div>
                 {!aiInsight && !isLoadingAi && (
-                    <button onClick={handleGenerateAiInsight} className="text-xs font-bold bg-indigo-50 text-indigo-600 px-4 py-2 rounded-full hover:bg-indigo-100 transition-colors">
+                    <button onClick={handleGenerateAiInsight} className="text-xs font-bold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 px-4 py-2 rounded-full hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors">
                         Generate Analysis
                     </button>
                 )}
             </div>
             <div className="min-h-[60px]">
-                {isLoadingAi && <div className="flex items-center gap-3 text-slate-500 animate-pulse"><Loader2 className="animate-spin"/> Analyzing sales data...</div>}
-                {aiInsight && <div className="prose prose-indigo prose-sm max-w-none text-slate-600 leading-relaxed whitespace-pre-line bg-slate-50/50 p-4 rounded-xl border border-slate-100">{aiInsight}</div>}
+                {isLoadingAi && <div className="flex items-center gap-3 text-slate-500 dark:text-slate-400 animate-pulse"><Loader2 className="animate-spin"/> Analyzing sales data...</div>}
+                {aiInsight && <div className="prose prose-indigo dark:prose-invert prose-sm max-w-none text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line bg-slate-50/50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700">{aiInsight}</div>}
             </div>
         </div>
       </div>
 
       {/* Mobile Card View */}
       <div className="md:hidden space-y-4">
-          <h3 className="font-bold text-lg text-slate-800 px-2">{timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Breakdown</h3>
+          <h3 className="font-bold text-lg text-slate-800 dark:text-white px-2">{timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Breakdown</h3>
           {deliveriesByStore.length === 0 ? (
-             <div className="p-8 text-center text-slate-400 bg-white rounded-2xl border border-slate-100">No data available</div>
+             <div className="p-8 text-center text-slate-400 bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">No data available</div>
           ) : (
              deliveriesByStore.map(store => (
-                <div key={store.id} className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3">
+                <div key={store.id} className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
                     <div className="flex justify-between items-center">
-                        <h4 className="font-bold text-slate-800">{store.name}</h4>
-                        <span className="px-2 py-1 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs">{store.deliveryCount} Drops</span>
+                        <h4 className="font-bold text-slate-800 dark:text-white">{store.name}</h4>
+                        <span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-lg font-bold text-xs">{store.deliveryCount} Drops</span>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div className="bg-emerald-50 p-2 rounded-lg">
-                            <p className="text-emerald-600 font-medium">Cash Sales</p>
-                            <p className="text-emerald-700 font-bold">${store.cashReceived.toFixed(0)}</p>
+                        <div className="bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded-lg">
+                            <p className="text-emerald-600 dark:text-emerald-400 font-medium">Cash Sales</p>
+                            <p className="text-emerald-700 dark:text-emerald-300 font-bold">${store.cashReceived.toFixed(0)}</p>
                         </div>
-                        <div className="bg-amber-50 p-2 rounded-lg">
-                            <p className="text-amber-600 font-medium">Pending</p>
-                            <p className="text-amber-700 font-bold">${store.cashPending.toFixed(0)}</p>
+                        <div className="bg-amber-50 dark:bg-amber-900/20 p-2 rounded-lg">
+                            <p className="text-amber-600 dark:text-amber-400 font-medium">Pending</p>
+                            <p className="text-amber-700 dark:text-amber-300 font-bold">${store.cashPending.toFixed(0)}</p>
                         </div>
-                        <div className="bg-blue-50 p-2 rounded-lg">
-                            <p className="text-blue-600 font-medium">Credit</p>
-                            <p className="text-blue-700 font-bold">${store.creditGiven.toFixed(0)}</p>
+                        <div className="bg-blue-50 dark:bg-blue-900/20 p-2 rounded-lg">
+                            <p className="text-blue-600 dark:text-blue-400 font-medium">Credit</p>
+                            <p className="text-blue-700 dark:text-blue-300 font-bold">${store.creditGiven.toFixed(0)}</p>
                         </div>
                     </div>
                     <div className="flex gap-2 pt-2">
                         <button 
                             onClick={() => handleOpenInvoice(store)}
-                            className="flex-1 py-2 bg-slate-50 text-slate-600 font-bold text-xs rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                            className="flex-1 py-2 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform"
                         >
                             <FileText size={14} /> Invoice
                         </button>
                         <button 
                             onClick={() => handleOpenStatement(store)}
-                            className="flex-1 py-2 bg-slate-50 text-slate-600 font-bold text-xs rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform"
+                            className="flex-1 py-2 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform"
                         >
                             <CreditCard size={14} /> Statement
                         </button>
@@ -715,44 +713,44 @@ export const Reports: React.FC = () => {
       </div>
 
       {/* Desktop Table View */}
-      <div className="hidden md:block bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
-        <div className="p-6 border-b border-slate-50 bg-slate-50/30">
-            <h3 className="font-bold text-lg text-slate-800">{timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Store Activity (Sales)</h3>
+      <div className="hidden md:block bg-white dark:bg-slate-900 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+        <div className="p-6 border-b border-slate-50 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/30">
+            <h3 className="font-bold text-lg text-slate-800 dark:text-white">{timeframe.charAt(0).toUpperCase() + timeframe.slice(1)} Store Activity (Sales)</h3>
         </div>
         <table className="w-full text-left">
-            <thead className="bg-slate-50 text-xs uppercase text-slate-500 font-bold tracking-wider">
+            <thead className="bg-slate-50 dark:bg-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-bold tracking-wider">
                 <tr>
                     <th className="p-5 pl-6">Store Name</th>
                     <th className="p-5 text-center">Deliveries</th>
-                    <th className="p-5 text-right text-emerald-600">Cash Sales</th>
-                    <th className="p-5 text-right text-amber-600">Cash Pending</th>
-                    <th className="p-5 text-right text-blue-600">Credit Given</th>
+                    <th className="p-5 text-right text-emerald-600 dark:text-emerald-400">Cash Sales</th>
+                    <th className="p-5 text-right text-amber-600 dark:text-amber-400">Cash Pending</th>
+                    <th className="p-5 text-right text-blue-600 dark:text-blue-400">Credit Given</th>
                     <th className="p-5 text-center">Actions</th>
                 </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 text-sm">
+            <tbody className="divide-y divide-slate-50 dark:divide-slate-800 text-sm">
                 {deliveriesByStore.length === 0 ? (
                     <tr><td colSpan={6} className="p-12 text-center text-slate-400">No data for this period.</td></tr>
                 ) : (
                     deliveriesByStore.map(store => (
-                        <tr key={store.id} className="hover:bg-slate-50/50 transition-colors group">
-                            <td className="p-5 pl-6 font-semibold text-slate-700">{store.name}</td>
-                            <td className="p-5 text-center"><span className="px-3 py-1 bg-slate-100 text-slate-600 rounded-full font-bold text-xs">{store.deliveryCount}</span></td>
-                            <td className="p-5 text-right font-mono font-medium text-emerald-600">${store.cashReceived.toFixed(2)}</td>
-                            <td className="p-5 text-right font-mono font-medium text-amber-600">${store.cashPending.toFixed(2)}</td>
-                            <td className="p-5 text-right font-mono font-medium text-blue-600">${store.creditGiven.toFixed(2)}</td>
+                        <tr key={store.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors group">
+                            <td className="p-5 pl-6 font-semibold text-slate-700 dark:text-slate-200">{store.name}</td>
+                            <td className="p-5 text-center"><span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full font-bold text-xs">{store.deliveryCount}</span></td>
+                            <td className="p-5 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400">${store.cashReceived.toFixed(2)}</td>
+                            <td className="p-5 text-right font-mono font-medium text-amber-600 dark:text-amber-400">${store.cashPending.toFixed(2)}</td>
+                            <td className="p-5 text-right font-mono font-medium text-blue-600 dark:text-blue-400">${store.creditGiven.toFixed(2)}</td>
                             <td className="p-5 text-center">
                                 <div className="flex flex-col items-stretch gap-2 w-full">
                                     <button 
                                         onClick={() => handleOpenInvoice(store)}
-                                        className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-indigo-600 hover:border-indigo-200 rounded-lg transition-all text-xs font-bold flex items-center justify-center gap-1 shadow-sm w-full"
+                                        className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:border-indigo-200 dark:hover:border-indigo-700 rounded-lg transition-all text-xs font-bold flex items-center justify-center gap-1 shadow-sm w-full"
                                         title="View Monthly Invoice"
                                     >
                                         <FileText size={14} /> Invoice
                                     </button>
                                     <button 
                                         onClick={() => handleOpenStatement(store)}
-                                        className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 hover:text-emerald-600 hover:border-emerald-200 rounded-lg transition-all text-xs font-bold flex items-center justify-center gap-1 shadow-sm w-full"
+                                        className="px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-emerald-600 dark:hover:text-emerald-400 hover:border-emerald-200 dark:hover:border-emerald-700 rounded-lg transition-all text-xs font-bold flex items-center justify-center gap-1 shadow-sm w-full"
                                         title="View Account Statement"
                                     >
                                         <CreditCard size={14} /> Statement

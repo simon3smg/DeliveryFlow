@@ -24,29 +24,29 @@ const DeliveryCard: React.FC<{
 
   return (
     <div 
-      className={`bg-white rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden group ${expanded ? 'border-indigo-200 shadow-md' : 'border-slate-100 shadow-sm hover:border-indigo-100 hover:shadow-md'}`}
+      className={`bg-white dark:bg-slate-900 rounded-xl border transition-all duration-200 cursor-pointer overflow-hidden group ${expanded ? 'border-indigo-200 dark:border-indigo-900 shadow-md' : 'border-slate-100 dark:border-slate-800 shadow-sm hover:border-indigo-100 dark:hover:border-indigo-900/50 hover:shadow-md'}`}
       onClick={() => setExpanded(!expanded)}
     >
       {/* Compact Header Row */}
       <div className="p-4 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 overflow-hidden">
-           <div className={`p-2.5 rounded-xl shrink-0 transition-colors duration-200 ${expanded ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100'}`}>
+           <div className={`p-2.5 rounded-xl shrink-0 transition-colors duration-200 ${expanded ? 'bg-indigo-600 text-white' : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-900/50'}`}>
               <StoreIcon size={20} />
            </div>
            <div className="min-w-0">
-              <h3 className="font-bold text-slate-800 text-sm sm:text-base truncate">{delivery.storeName}</h3>
-              <div className="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+              <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm sm:text-base truncate">{delivery.storeName}</h3>
+              <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                  <span className="flex items-center gap-1"><Calendar size={12} /> {formatEdmontonDate(delivery.timestamp)}</span>
-                 <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                 <span className="font-medium text-slate-600">{itemCount} items</span>
+                 <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+                 <span className="font-medium text-slate-600 dark:text-slate-400">{itemCount} items</span>
                  
                  {/* Payment Method Badge */}
                  {delivery.paymentMethod === 'cash' ? (
-                     <span className={`flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded border text-[10px] font-bold uppercase ${isUnpaidCash ? 'bg-red-50 text-red-600 border-red-100' : 'bg-emerald-50 text-emerald-600 border-emerald-100'}`}>
+                     <span className={`flex items-center gap-1 ml-2 px-1.5 py-0.5 rounded border text-[10px] font-bold uppercase ${isUnpaidCash ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/30' : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/30'}`}>
                         <Banknote size={10} /> {isUnpaidCash ? 'Cash Pending' : 'Cash Paid'}
                      </span>
                  ) : (
-                     <span className="flex items-center gap-1 ml-2 text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 text-[10px] font-bold uppercase">
+                     <span className="flex items-center gap-1 ml-2 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-1.5 py-0.5 rounded border border-blue-100 dark:border-blue-900/30 text-[10px] font-bold uppercase">
                         <CreditCard size={10} /> Credit
                      </span>
                  )}
@@ -56,9 +56,9 @@ const DeliveryCard: React.FC<{
         
         <div className="text-right shrink-0">
            <div className="flex flex-col items-end">
-               <span className="font-bold text-slate-900 text-sm sm:text-base">${totalValue.toFixed(2)}</span>
+               <span className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">${totalValue.toFixed(2)}</span>
                <div className="flex items-center gap-1 mt-1">
-                   <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-600 border border-emerald-100">
+                   <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30">
                       {delivery.status}
                    </span>
                    {expanded ? <ChevronUp size={16} className="text-slate-400"/> : <ChevronDown size={16} className="text-slate-400"/>}
@@ -70,23 +70,23 @@ const DeliveryCard: React.FC<{
       {/* Expanded Details Section */}
       {expanded && (
         <div 
-          className="px-4 pb-4 pt-0 bg-slate-50/50 border-t border-slate-100 animate-in slide-in-from-top-2 duration-200 cursor-default"
+          className="px-4 pb-4 pt-0 bg-slate-50/50 dark:bg-slate-950/50 border-t border-slate-100 dark:border-slate-800 animate-in slide-in-from-top-2 duration-200 cursor-default"
           onClick={(e) => e.stopPropagation()} 
         >
-           <div className="py-4 flex flex-col gap-4 text-sm text-slate-600">
+           <div className="py-4 flex flex-col gap-4 text-sm text-slate-600 dark:text-slate-300">
               
               {/* Metadata Row */}
               <div className="flex flex-wrap gap-4 text-xs">
-                 <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm">
-                    <User size={12} className="text-indigo-500"/> <span className="font-medium text-slate-700">{delivery.driverName}</span>
+                 <span className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <User size={12} className="text-indigo-500 dark:text-indigo-400"/> <span className="font-medium text-slate-700 dark:text-slate-300">{delivery.driverName}</span>
                  </span>
-                 <span className="flex items-center gap-1.5 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm">
-                    <Clock size={12} className="text-indigo-500"/> <span className="font-medium text-slate-700">{formatEdmontonTime(delivery.timestamp)}</span>
+                 <span className="flex items-center gap-1.5 bg-white dark:bg-slate-800 px-2 py-1 rounded border border-slate-200 dark:border-slate-700 shadow-sm">
+                    <Clock size={12} className="text-indigo-500 dark:text-indigo-400"/> <span className="font-medium text-slate-700 dark:text-slate-300">{formatEdmontonTime(delivery.timestamp)}</span>
                  </span>
                  
                  {/* Payment Collection Info */}
                  {delivery.paymentMethod === 'cash' && delivery.paymentStatus === 'paid' && delivery.paymentCollectedAt && (
-                     <span className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-1 rounded shadow-sm">
+                     <span className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900/30 px-2 py-1 rounded shadow-sm">
                         <Banknote size={12}/> Collected: {formatEdmontonDate(delivery.paymentCollectedAt)}
                      </span>
                  )}
@@ -94,7 +94,7 @@ const DeliveryCard: React.FC<{
               
               {/* Unpaid Warning Banner */}
               {isUnpaidCash && (
-                 <div className="flex items-center justify-between p-3 bg-red-50 border border-red-100 rounded-xl text-red-700 text-xs shadow-sm">
+                 <div className="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30 rounded-xl text-red-700 dark:text-red-300 text-xs shadow-sm">
                      <div className="flex items-center gap-2">
                         <AlertTriangle size={16} />
                         <span className="font-bold">Payment Not Collected</span>
@@ -109,44 +109,44 @@ const DeliveryCard: React.FC<{
               )}
 
               {/* Item List */}
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                 <div className="px-3 py-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex justify-between">
+              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+                 <div className="px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border-b border-slate-100 dark:border-slate-700 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex justify-between">
                     <span>Item</span>
                     <span>Qty / Price</span>
                  </div>
-                 <div className="divide-y divide-slate-100">
+                 <div className="divide-y divide-slate-100 dark:divide-slate-700/50">
                     {delivery.items.map((item, idx) => (
                        <div key={idx} className="flex justify-between items-center px-3 py-2 text-xs">
-                          <span className="font-medium text-slate-700">{item.productName}</span>
-                          <span className="font-mono text-slate-500">
-                             <span className="font-bold text-slate-800">{item.quantity}</span> x ${item.priceAtDelivery}
+                          <span className="font-medium text-slate-700 dark:text-slate-300">{item.productName}</span>
+                          <span className="font-mono text-slate-500 dark:text-slate-400">
+                             <span className="font-bold text-slate-800 dark:text-slate-200">{item.quantity}</span> x ${item.priceAtDelivery}
                           </span>
                        </div>
                     ))}
                  </div>
-                 <div className="px-3 py-2 bg-slate-50 border-t border-slate-100 flex justify-between items-center text-xs">
-                    <span className="font-bold text-slate-500">Total</span>
-                    <span className="font-bold text-indigo-600 font-mono">${totalValue.toFixed(2)}</span>
+                 <div className="px-3 py-2 bg-slate-50 dark:bg-slate-700/50 border-t border-slate-100 dark:border-slate-700 flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-500 dark:text-slate-400">Total</span>
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400 font-mono">${totalValue.toFixed(2)}</span>
                  </div>
               </div>
 
               {/* Notes if any */}
               {delivery.notes && (
-                 <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-900">
-                    <span className="font-bold block mb-1 uppercase text-[10px] tracking-wider text-amber-700">Notes</span> 
+                 <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/30 rounded-xl text-xs text-amber-900 dark:text-amber-300">
+                    <span className="font-bold block mb-1 uppercase text-[10px] tracking-wider text-amber-700 dark:text-amber-400">Notes</span> 
                     {delivery.notes}
                  </div>
               )}
 
               {/* Actions */}
-              <div className="mt-2 flex justify-between items-center pt-2 border-t border-slate-200/60 relative z-10">
+              <div className="mt-2 flex justify-between items-center pt-2 border-t border-slate-200/60 dark:border-slate-700 relative z-10">
                  <button 
                     type="button"
                     onClick={(e) => {
                        e.stopPropagation();
                        onDelete(e, delivery.id);
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 shadow-sm rounded-lg text-xs font-bold text-slate-600 hover:text-red-600 transition-all active:scale-95"
+                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-900/30 border border-slate-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-800 shadow-sm rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-all active:scale-95"
                     title="Delete Delivery"
                  >
                     <Trash2 size={14} /> Delete
@@ -158,7 +158,7 @@ const DeliveryCard: React.FC<{
                        e.stopPropagation();
                        onEdit(e, delivery);
                     }}
-                    className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 shadow-sm rounded-lg text-xs font-bold text-slate-600 hover:text-indigo-600 transition-all active:scale-95"
+                    className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 border border-slate-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800 shadow-sm rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all active:scale-95"
                  >
                     <Edit2 size={14} /> Edit Delivery
                  </button>
@@ -166,7 +166,7 @@ const DeliveryCard: React.FC<{
 
               {/* Last Edited By info */}
               {delivery.lastEditedBy && (
-                  <div className="mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-400 italic flex items-center justify-end gap-1">
+                  <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 text-[10px] text-slate-400 italic flex items-center justify-end gap-1">
                       <Edit2 size={10} />
                       <span>Last edited by {delivery.lastEditedBy} • {formatEdmontonDate(delivery.lastEditedAt)} {formatEdmontonTime(delivery.lastEditedAt)}</span>
                   </div>
@@ -503,7 +503,7 @@ export const Deliveries: React.FC = () => {
   if (loading && view === 'list' && deliveries.length === 0) {
       return (
           <div className="flex h-96 items-center justify-center">
-              <Loader2 className="animate-spin text-indigo-600" size={32} />
+              <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={32} />
           </div>
       )
   }
@@ -514,18 +514,18 @@ export const Deliveries: React.FC = () => {
       {view === 'list' && (
         <>
           {/* Header Controls */}
-          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white p-4 rounded-3xl border border-slate-100 shadow-sm sticky top-0 z-20 md:static">
+          <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm sticky top-0 z-20 md:static">
              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full xl:w-auto">
-                 <div className="flex bg-slate-100 p-1 rounded-xl shrink-0 w-full sm:w-auto">
+                 <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl shrink-0 w-full sm:w-auto">
                     <button 
                         onClick={() => setFilterMode('daily')}
-                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${filterMode === 'daily' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all ${filterMode === 'daily' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                     >
                         Daily Route
                     </button>
                     <button 
                         onClick={() => setFilterMode('pending')}
-                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${filterMode === 'pending' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                        className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-2 ${filterMode === 'pending' ? 'bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'}`}
                     >
                         Pending Cash
                         {totalPendingAmount > 0 && <span className="w-2 h-2 rounded-full bg-red-500"></span>}
@@ -533,16 +533,16 @@ export const Deliveries: React.FC = () => {
                  </div>
 
                  {filterMode === 'daily' && (
-                     <div className="flex items-center bg-slate-50 rounded-2xl border border-slate-200 p-1 w-full sm:w-auto justify-between sm:justify-start">
-                        <button onClick={() => changeDate(-1)} className="p-3 hover:bg-white hover:shadow-sm rounded-xl text-slate-500 transition-all active:scale-95"><ChevronLeft size={20} /></button>
+                     <div className="flex items-center bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-1 w-full sm:w-auto justify-between sm:justify-start">
+                        <button onClick={() => changeDate(-1)} className="p-3 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm rounded-xl text-slate-500 dark:text-slate-400 transition-all active:scale-95"><ChevronLeft size={20} /></button>
                         <div className="relative mx-2 group">
                             <div className="flex items-center gap-2 px-4 py-1 cursor-pointer">
-                                <Calendar size={16} className="text-indigo-600" />
-                                <span className="text-sm font-bold text-slate-700 whitespace-nowrap">{formatDateDisplay(dateFilter)}</span>
+                                <Calendar size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200 whitespace-nowrap">{formatDateDisplay(dateFilter)}</span>
                             </div>
                             <input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"/>
                         </div>
-                        <button onClick={() => changeDate(1)} className="p-3 hover:bg-white hover:shadow-sm rounded-xl text-slate-500 transition-all active:scale-95"><ChevronRight size={20} /></button>
+                        <button onClick={() => changeDate(1)} className="p-3 hover:bg-white dark:hover:bg-slate-700 hover:shadow-sm rounded-xl text-slate-500 dark:text-slate-400 transition-all active:scale-95"><ChevronRight size={20} /></button>
                      </div>
                  )}
              </div>
@@ -553,19 +553,19 @@ export const Deliveries: React.FC = () => {
                     <input 
                       type="text" 
                       placeholder={filterMode === 'pending' ? "Search unpaid..." : "Search deliveries..."} 
-                      className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
+                      className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 dark:text-white focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all text-sm"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                  </div>
-                 <button onClick={() => { resetForm(); setView('create'); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 transition-all transform hover:-translate-y-0.5 font-semibold text-sm whitespace-nowrap active:scale-95">
+                 <button onClick={() => { resetForm(); setView('create'); }} className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-indigo-200 dark:shadow-none transition-all transform hover:-translate-y-0.5 font-semibold text-sm whitespace-nowrap active:scale-95">
                     <Plus size={18} /> New Delivery
                  </button>
              </div>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-emerald-600 text-white rounded-3xl p-6 shadow-lg shadow-emerald-200 relative overflow-hidden group">
+            <div className="bg-emerald-600 dark:bg-emerald-800 text-white rounded-3xl p-6 shadow-lg shadow-emerald-200 dark:shadow-none relative overflow-hidden group">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16 pointer-events-none"></div>
                 <div className="relative z-10 flex justify-between items-start">
                     <div>
@@ -586,28 +586,28 @@ export const Deliveries: React.FC = () => {
             </div>
 
             {(filterMode === 'pending' || totalPendingAmount > 0) && (
-                <div onClick={() => setFilterMode('pending')} className={`rounded-3xl p-6 border shadow-sm flex flex-col justify-between cursor-pointer transition-all ${filterMode === 'pending' ? 'bg-red-50 border-red-100 shadow-md ring-1 ring-red-200' : 'bg-white border-slate-100 hover:border-red-100 hover:shadow-md'}`}>
+                <div onClick={() => setFilterMode('pending')} className={`rounded-3xl p-6 border shadow-sm flex flex-col justify-between cursor-pointer transition-all ${filterMode === 'pending' ? 'bg-red-50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30 shadow-md ring-1 ring-red-200 dark:ring-red-900' : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-red-100 dark:hover:border-red-900/30 hover:shadow-md'}`}>
                      <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${filterMode === 'pending' ? 'bg-white text-red-500 shadow-sm' : 'bg-red-50 text-red-500'}`}><AlertTriangle size={20} /></div>
+                            <div className={`p-2 rounded-lg ${filterMode === 'pending' ? 'bg-white dark:bg-red-900/30 text-red-500 shadow-sm' : 'bg-red-50 dark:bg-red-900/20 text-red-500'}`}><AlertTriangle size={20} /></div>
                             <div>
-                                <h3 className={`font-bold text-lg ${filterMode === 'pending' ? 'text-red-900' : 'text-slate-800'}`}>Outstanding</h3>
-                                <p className={`text-xs ${filterMode === 'pending' ? 'text-red-700' : 'text-slate-500'}`}>Unpaid cash deliveries</p>
+                                <h3 className={`font-bold text-lg ${filterMode === 'pending' ? 'text-red-900 dark:text-red-100' : 'text-slate-800 dark:text-slate-100'}`}>Outstanding</h3>
+                                <p className={`text-xs ${filterMode === 'pending' ? 'text-red-700 dark:text-red-300' : 'text-slate-500 dark:text-slate-400'}`}>Unpaid cash deliveries</p>
                             </div>
                         </div>
-                        <div className="text-right"><h3 className="text-2xl font-bold text-red-600 tracking-tight">${totalPendingAmount.toFixed(2)}</h3></div>
+                        <div className="text-right"><h3 className="text-2xl font-bold text-red-600 dark:text-red-400 tracking-tight">${totalPendingAmount.toFixed(2)}</h3></div>
                      </div>
-                     {filterMode !== 'pending' && <div className="mt-3 text-xs text-indigo-600 font-bold flex items-center gap-1 self-end">View Details <ArrowRight size={12} /></div>}
+                     {filterMode !== 'pending' && <div className="mt-3 text-xs text-indigo-600 dark:text-indigo-400 font-bold flex items-center gap-1 self-end">View Details <ArrowRight size={12} /></div>}
                 </div>
             )}
           </div>
 
           <div className="flex flex-col gap-3">
              {filteredDeliveries.length === 0 ? (
-               <div className="bg-white rounded-3xl p-12 text-center text-slate-400 border border-slate-100 border-dashed mt-4">
-                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4"><Package size={32} className="text-slate-300" /></div>
-                 <p className="font-medium text-slate-600">{filterMode === 'pending' ? "Great job! No pending cash payments found." : "No deliveries found for this date."}</p>
-                 {filterMode === 'daily' && <button onClick={() => { setDateFilter(getEdmontonISOString()); setSearchTerm(''); }} className="mt-4 text-indigo-600 font-bold text-sm hover:underline">Reset to Today</button>}
+               <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center text-slate-400 border border-slate-100 dark:border-slate-800 border-dashed mt-4">
+                 <div className="w-16 h-16 bg-slate-50 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4"><Package size={32} className="text-slate-300 dark:text-slate-600" /></div>
+                 <p className="font-medium text-slate-600 dark:text-slate-400">{filterMode === 'pending' ? "Great job! No pending cash payments found." : "No deliveries found for this date."}</p>
+                 {filterMode === 'daily' && <button onClick={() => { setDateFilter(getEdmontonISOString()); setSearchTerm(''); }} className="mt-4 text-indigo-600 dark:text-indigo-400 font-bold text-sm hover:underline">Reset to Today</button>}
                </div>
              ) : (
                filteredDeliveries.map((delivery) => (
@@ -619,25 +619,25 @@ export const Deliveries: React.FC = () => {
       )}
 
       {(view === 'create' || view === 'edit') && (
-        <div className="fixed inset-0 z-[60] bg-slate-50 md:static md:bg-transparent md:z-auto flex flex-col md:block h-screen md:h-auto overflow-hidden md:overflow-visible">
+        <div className="fixed inset-0 z-[60] bg-slate-50 dark:bg-slate-950 md:static md:bg-transparent md:z-auto flex flex-col md:block h-screen md:h-auto overflow-hidden md:overflow-visible">
             {/* Header for Mobile Modal */}
-            <div className="bg-white md:bg-transparent px-5 py-4 md:px-0 md:py-0 border-b md:border-none flex items-center justify-between shrink-0 shadow-sm md:shadow-none z-10 safe-top">
+            <div className="bg-white dark:bg-slate-900 md:bg-transparent px-5 py-4 md:px-0 md:py-0 border-b dark:border-slate-800 md:border-none flex items-center justify-between shrink-0 shadow-sm md:shadow-none z-10 safe-top">
                 <div>
-                    <h2 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight">{view === 'edit' ? 'Edit Drop-off' : 'New Drop-off'}</h2>
-                    <p className="text-sm text-slate-500 font-medium">{view === 'edit' ? 'Update details' : 'Record delivery'}</p>
+                    <h2 className="text-xl md:text-2xl font-bold text-slate-800 dark:text-white tracking-tight">{view === 'edit' ? 'Edit Drop-off' : 'New Drop-off'}</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{view === 'edit' ? 'Update details' : 'Record delivery'}</p>
                 </div>
-                <button onClick={() => setView('list')} className="p-2.5 bg-slate-100 hover:bg-slate-200 md:bg-transparent rounded-full text-slate-600 transition-colors">
+                <button onClick={() => setView('list')} className="p-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 md:bg-transparent rounded-full text-slate-600 dark:text-slate-400 transition-colors">
                     <X size={24} />
                 </button>
             </div>
             
             <div className="flex-1 overflow-y-auto md:overflow-visible scroll-smooth pb-safe"> 
                {/* Main Form Container - optimized for mobile */}
-               <div className="w-full md:max-w-3xl md:mx-auto md:bg-white md:rounded-3xl md:shadow-xl md:border md:border-slate-100 md:overflow-hidden pb-32 md:pb-0">
+               <div className="w-full md:max-w-3xl md:mx-auto md:bg-white md:dark:bg-slate-900 md:rounded-3xl md:shadow-xl md:border md:border-slate-100 md:dark:border-slate-800 md:overflow-hidden pb-32 md:pb-0">
                    <div className="p-4 sm:p-8 space-y-6">
 
                     {/* Store Selection Card - Compact */}
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
                         <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                             <StoreIcon size={14} /> Select Store
                         </label>
@@ -645,7 +645,7 @@ export const Deliveries: React.FC = () => {
                             <select 
                                 value={selectedStoreId} 
                                 onChange={(e) => { setSelectedStoreId(e.target.value); setCashReceived(true); }}
-                                className="w-full p-4 pl-4 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none cursor-pointer font-bold text-slate-800 text-lg shadow-sm"
+                                className="w-full p-4 pl-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none cursor-pointer font-bold text-slate-800 dark:text-white text-lg shadow-sm"
                             >
                                 <option value="">-- Choose Store --</option>
                                 {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -656,21 +656,21 @@ export const Deliveries: React.FC = () => {
                         </div>
                         {selectedStore && (
                             <div className="flex flex-col gap-2 mt-2">
-                                <div className={`px-3 py-2 rounded-xl border flex items-center gap-2 text-xs font-bold animate-in slide-in-from-top-1 ${selectedStore.paymentMethod === 'cash' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' : 'bg-blue-50 border-blue-100 text-blue-700'}`}>
+                                <div className={`px-3 py-2 rounded-xl border flex items-center gap-2 text-xs font-bold animate-in slide-in-from-top-1 ${selectedStore.paymentMethod === 'cash' ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-100 dark:border-emerald-900/30 text-emerald-700 dark:text-emerald-400' : 'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-900/30 text-blue-700 dark:text-blue-400'}`}>
                                     <CreditCard size={16} />
                                     <span>
                                         Terms: <span className="uppercase">{selectedStore.paymentMethod === 'cash' ? 'Cash on Delivery' : 'Monthly Credit'}</span>
                                     </span>
                                 </div>
                                 {selectedStore.paymentMethod === 'cash' && (
-                                    <div className="flex items-center justify-between px-3 py-2 bg-slate-50 rounded-xl border border-slate-200 animate-in slide-in-from-top-2">
-                                        <div className="flex items-center gap-2 text-slate-700">
-                                            <div className="p-1.5 bg-white rounded-lg border border-slate-200 shadow-sm text-green-600"><DollarSign size={16} /></div>
+                                    <div className="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-700 animate-in slide-in-from-top-2">
+                                        <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
+                                            <div className="p-1.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm text-green-600"><DollarSign size={16} /></div>
                                             <span className="font-bold text-xs">Cash Collected?</span>
                                         </div>
                                         <label className="relative inline-flex items-center cursor-pointer">
                                             <input type="checkbox" checked={cashReceived} onChange={(e) => setCashReceived(e.target.checked)} className="sr-only peer" />
-                                            <div className="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                            <div className="w-10 h-6 bg-slate-200 dark:bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
                                         </label>
                                     </div>
                                 )}
@@ -679,7 +679,7 @@ export const Deliveries: React.FC = () => {
                     </div>
 
                     {/* Product Selection Card - Compact */}
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                    <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
                         <div className="flex justify-between items-center">
                             <label className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                                 <Package size={14}/> Add Products
@@ -690,7 +690,7 @@ export const Deliveries: React.FC = () => {
                             <select 
                                 value={selectedProductId}
                                 onChange={(e) => setSelectedProductId(e.target.value)}
-                                className="w-full p-4 pr-10 rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none text-lg font-bold text-slate-800 appearance-none shadow-sm transition-all"
+                                className="w-full p-4 pr-10 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-800 focus:ring-2 focus:ring-indigo-500 outline-none text-lg font-bold text-slate-800 dark:text-white appearance-none shadow-sm transition-all"
                             >
                             {products.length === 0 && <option value="">Loading...</option>}
                             {products.map(p => <option key={p.id} value={p.id}>{p.name} (${p.price}/{p.unit})</option>)}
@@ -702,10 +702,10 @@ export const Deliveries: React.FC = () => {
 
                         {/* Quantity & Add Row - Optimized for Mobile */}
                         <div className="flex gap-3 h-14">
-                            <div className="flex items-center border-2 border-slate-200 rounded-xl overflow-hidden bg-white shrink-0">
+                            <div className="flex items-center border-2 border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white dark:bg-slate-800 shrink-0">
                                 <button 
                                     onClick={() => setQuantity(Math.max(1, quantity - 1))} 
-                                    className="w-14 h-full flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 transition-colors border-r border-slate-200 text-slate-500" 
+                                    className="w-14 h-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 active:bg-slate-200 transition-colors border-r border-slate-200 dark:border-slate-700 text-slate-500" 
                                     type="button"
                                 >
                                     <Minus size={28} strokeWidth={2.5} />
@@ -715,11 +715,11 @@ export const Deliveries: React.FC = () => {
                                     min="1" 
                                     value={quantity}
                                     onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                                    className="w-16 h-full text-center outline-none text-slate-900 font-extrabold text-2xl appearance-none m-0 bg-transparent"
+                                    className="w-16 h-full text-center outline-none text-slate-900 dark:text-white font-extrabold text-2xl appearance-none m-0 bg-transparent"
                                 />
                                 <button 
                                     onClick={() => setQuantity(quantity + 1)} 
-                                    className="w-14 h-full flex items-center justify-center hover:bg-slate-100 active:bg-slate-200 transition-colors border-l border-slate-200 text-slate-900" 
+                                    className="w-14 h-full flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 active:bg-slate-200 transition-colors border-l border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white" 
                                     type="button"
                                 >
                                     <Plus size={28} strokeWidth={2.5} />
@@ -728,7 +728,7 @@ export const Deliveries: React.FC = () => {
 
                             <button 
                                 onClick={handleAddItem}
-                                className="flex-1 bg-slate-900 text-white rounded-xl font-bold text-lg tracking-wide shadow-md active:scale-95 flex items-center justify-center gap-2 transition-transform"
+                                className="flex-1 bg-slate-900 dark:bg-indigo-600 text-white rounded-xl font-bold text-lg tracking-wide shadow-md active:scale-95 flex items-center justify-center gap-2 transition-transform"
                             >
                                 <Plus size={24} strokeWidth={3} /> Add
                             </button>
@@ -737,27 +737,27 @@ export const Deliveries: React.FC = () => {
 
                     {/* Cart List - Compact List */}
                     {cart.length > 0 && (
-                        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                             <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 flex justify-between items-center">
-                                <span className="text-xs font-bold text-slate-500 uppercase">Items ({cart.length})</span>
-                                <span className="text-xs font-bold text-indigo-600">Total: ${cart.reduce((a,b)=>a+(b.quantity*b.priceAtDelivery),0).toFixed(2)}</span>
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                             <div className="bg-slate-50 dark:bg-slate-800/50 px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+                                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase">Items ({cart.length})</span>
+                                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">Total: ${cart.reduce((a,b)=>a+(b.quantity*b.priceAtDelivery),0).toFixed(2)}</span>
                              </div>
-                             <div className="divide-y divide-slate-100">
+                             <div className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {cart.map((item, idx) => (
                                     <div key={idx} className="p-3 flex items-center justify-between">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex flex-col items-center justify-center shrink-0">
-                                                <span className="text-lg font-bold text-indigo-700 leading-none">{item.quantity}</span>
-                                                <span className="text-[9px] uppercase font-bold text-indigo-400 mt-0.5">QTY</span>
+                                            <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-900/50 flex flex-col items-center justify-center shrink-0">
+                                                <span className="text-lg font-bold text-indigo-700 dark:text-indigo-300 leading-none">{item.quantity}</span>
+                                                <span className="text-[9px] uppercase font-bold text-indigo-400 dark:text-indigo-500 mt-0.5">QTY</span>
                                             </div>
                                             <div>
-                                                <p className="font-bold text-slate-800 text-sm leading-tight">{item.productName}</p>
-                                                <p className="text-xs text-slate-500 font-medium">${item.priceAtDelivery.toFixed(2)} / unit</p>
+                                                <p className="font-bold text-slate-800 dark:text-white text-sm leading-tight">{item.productName}</p>
+                                                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">${item.priceAtDelivery.toFixed(2)} / unit</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-3">
-                                            <span className="font-bold text-slate-700 text-sm">${(item.quantity * item.priceAtDelivery).toFixed(2)}</span>
-                                            <button onClick={() => handleRemoveItem(idx)} className="text-slate-300 hover:text-red-500 p-2 active:scale-95 transition-transform">
+                                            <span className="font-bold text-slate-700 dark:text-slate-300 text-sm">${(item.quantity * item.priceAtDelivery).toFixed(2)}</span>
+                                            <button onClick={() => handleRemoveItem(idx)} className="text-slate-300 dark:text-slate-600 hover:text-red-500 p-2 active:scale-95 transition-transform">
                                                 <Trash2 size={18} />
                                             </button>
                                         </div>
@@ -773,7 +773,7 @@ export const Deliveries: React.FC = () => {
                         <textarea 
                             value={notes}
                             onChange={(e) => setNotes(e.target.value)}
-                            className="w-full p-4 rounded-2xl border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none h-24 resize-none bg-white text-base shadow-sm"
+                            className="w-full p-4 rounded-2xl border border-slate-200 dark:border-slate-800 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none h-24 resize-none bg-white dark:bg-slate-900 text-slate-900 dark:text-white text-base shadow-sm"
                             placeholder="Optional delivery notes..."
                         />
                     </div>
@@ -781,9 +781,9 @@ export const Deliveries: React.FC = () => {
                    </div>
                    
                    {/* Desktop Footer (hidden on mobile) */}
-                   <div className="hidden md:flex p-6 bg-slate-50 border-t border-slate-100 justify-end gap-4">
-                        <button onClick={() => setView('list')} className="px-6 py-3 rounded-xl font-bold text-slate-500 hover:text-slate-700 hover:bg-white border border-transparent hover:border-slate-200 transition-all w-full sm:w-auto" disabled={submitting}>Cancel</button>
-                        <button onClick={handleSubmit} disabled={submitting} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all transform active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto">
+                   <div className="hidden md:flex p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 justify-end gap-4">
+                        <button onClick={() => setView('list')} className="px-6 py-3 rounded-xl font-bold text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all w-full sm:w-auto" disabled={submitting}>Cancel</button>
+                        <button onClick={handleSubmit} disabled={submitting} className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-all transform active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto">
                             {submitting && <Loader2 className="animate-spin" size={20}/>} {view === 'edit' ? 'Update Delivery' : 'Complete Delivery'}
                         </button>
                    </div>
@@ -791,9 +791,9 @@ export const Deliveries: React.FC = () => {
             </div>
 
             {/* Mobile Fixed Footer */}
-            <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 pb-safe z-[60] flex gap-3 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
-                 <button onClick={() => setView('list')} className="flex-1 py-3.5 rounded-xl font-bold text-slate-600 bg-slate-100 active:bg-slate-200 transition-all active:scale-95 text-sm" disabled={submitting}>Cancel</button>
-                <button onClick={handleSubmit} disabled={submitting} className="flex-[2] py-3.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 transition-all active:scale-95 flex items-center justify-center gap-2 text-base">
+            <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 pb-safe z-[60] flex gap-3 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
+                 <button onClick={() => setView('list')} className="flex-1 py-3.5 rounded-xl font-bold text-slate-600 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 active:bg-slate-200 dark:active:bg-slate-700 transition-all active:scale-95 text-sm" disabled={submitting}>Cancel</button>
+                <button onClick={handleSubmit} disabled={submitting} className="flex-[2] py-3.5 bg-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-indigo-200 dark:shadow-none transition-all active:scale-95 flex items-center justify-center gap-2 text-base">
                     {submitting && <Loader2 className="animate-spin" size={20}/>} {view === 'edit' ? 'Update' : 'Complete'}
                 </button>
             </div>
@@ -803,18 +803,18 @@ export const Deliveries: React.FC = () => {
       {/* Delete Confirmation Modal */}
       {deliveryToDelete && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in duration-200">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl w-full max-w-sm p-6 animate-in zoom-in duration-200">
                 <div className="flex flex-col items-center text-center gap-4">
-                    <div className="w-12 h-12 bg-red-50 text-red-500 rounded-full flex items-center justify-center">
+                    <div className="w-12 h-12 bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 rounded-full flex items-center justify-center">
                         <AlertTriangle size={24} />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-slate-800">Confirm Delete</h3>
-                        <p className="text-slate-500 text-sm mt-1">Are you sure you want to remove this delivery? This action cannot be undone.</p>
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white">Confirm Delete</h3>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">Are you sure you want to remove this delivery? This action cannot be undone.</p>
                     </div>
                     <div className="flex gap-3 w-full mt-2">
-                        <button onClick={() => setDeliveryToDelete(null)} className="flex-1 py-2.5 text-slate-600 font-bold hover:bg-slate-50 rounded-xl transition-colors">Cancel</button>
-                        <button onClick={confirmDelete} className="flex-1 py-2.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 shadow-lg shadow-red-200 transition-colors">Delete</button>
+                        <button onClick={() => setDeliveryToDelete(null)} className="flex-1 py-2.5 text-slate-600 dark:text-slate-400 font-bold hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-colors">Cancel</button>
+                        <button onClick={confirmDelete} className="flex-1 py-2.5 bg-red-500 text-white font-bold rounded-xl hover:bg-red-600 shadow-lg shadow-red-200 dark:shadow-none transition-colors">Delete</button>
                     </div>
                 </div>
             </div>
