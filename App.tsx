@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
@@ -17,7 +18,7 @@ import { Loader2 } from 'lucide-react';
 const INACTIVITY_LIMIT = 1 * 60 * 60 * 1000;
 
 // Async Auth Protection
-const PrivateRoute = ({ children }: { children?: React.ReactNode }) => {
+const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -32,7 +33,7 @@ const PrivateRoute = ({ children }: { children?: React.ReactNode }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 text-indigo-600">
+      <div className="min-h-screen flex items-center justify-center bg-slate-950 text-indigo-400">
         <Loader2 className="animate-spin" size={48} />
       </div>
     );

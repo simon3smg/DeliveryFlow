@@ -94,17 +94,17 @@ export const LiveMap: React.FC = () => {
     const factoryMarker = L.marker([FACTORY_LOCATION.lat, FACTORY_LOCATION.lng], { icon: factoryIcon, zIndexOffset: 1000 })
       .addTo(map)
       .bindPopup(`
-        <div class="p-2 min-w-[200px] font-sans text-slate-900">
+        <div class="p-2 min-w-[200px] font-sans text-slate-100">
             <div class="flex items-center gap-2 mb-2">
                 <div class="bg-emerald-600 text-white p-1 rounded-md">
                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4 8 4v14"/><path d="M17 21v-8H7v8"/></svg>
                 </div>
                 <div>
-                    <h3 class="font-bold text-slate-900 leading-tight">Factory / Distribution Center</h3>
-                    <p class="text-[10px] text-slate-500 font-medium">Origin Point</p>
+                    <h3 class="font-bold text-white leading-tight">Factory / Distribution Center</h3>
+                    <p class="text-[10px] text-slate-400 font-medium">Origin Point</p>
                 </div>
             </div>
-            <p class="text-xs text-slate-600 border-t border-slate-100 pt-2 leading-relaxed">${FACTORY_LOCATION.address}</p>
+            <p class="text-xs text-slate-300 border-t border-slate-700 pt-2 leading-relaxed">${FACTORY_LOCATION.address}</p>
         </div>
       `);
 
@@ -123,8 +123,18 @@ export const LiveMap: React.FC = () => {
   // --- Geocoding Helper ---
   const geocodeAddress = async (address: string) => {
     try {
+        // Normalize address for better matching
+        let searchAddress = address
+            .replace(/\bAve\b\.?/g, 'Avenue')
+            .replace(/\bSt\b\.?/g, 'Street')
+            .replace(/\bRd\b\.?/g, 'Road')
+            .replace(/\bBlvd\b\.?/g, 'Boulevard')
+            .replace(/\bNW\b/g, 'Northwest')
+            .replace(/\bSW\b/g, 'Southwest')
+            .replace(/\bNE\b/g, 'Northeast')
+            .replace(/\bSE\b/g, 'Southeast');
+
         // Force Edmonton context
-        let searchAddress = address;
         if (!searchAddress.toLowerCase().includes('edmonton')) {
             searchAddress += ", Edmonton, Alberta, Canada";
         } else if (!searchAddress.toLowerCase().includes('canada')) {
@@ -132,7 +142,8 @@ export const LiveMap: React.FC = () => {
         }
 
         const query = encodeURIComponent(searchAddress);
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&viewbox=-113.713,53.666,-113.293,53.400&bounded=1&limit=1`);
+        // Relaxed constraints
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
         const data = await response.json();
         if (data && data.length > 0) {
             return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
@@ -188,17 +199,17 @@ export const LiveMap: React.FC = () => {
                     popupAnchor: [0, -24]
                 })
                 }).bindPopup(`
-                    <div class="p-2 min-w-[180px] font-sans text-slate-900">
+                    <div class="p-2 min-w-[180px] font-sans text-slate-100">
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="bg-indigo-100 text-indigo-700 p-0.5 px-1.5 rounded text-[10px] font-bold uppercase tracking-wider">Store</span>
+                            <span class="bg-indigo-900/30 text-indigo-400 p-0.5 px-1.5 rounded text-[10px] font-bold uppercase tracking-wider">Store</span>
                         </div>
-                        <h3 class="font-bold text-slate-900 text-sm mb-1">${store.name}</h3>
-                        <p class="text-xs text-slate-500 mb-2 leading-tight">${store.address}</p>
+                        <h3 class="font-bold text-white text-sm mb-1">${store.name}</h3>
+                        <p class="text-xs text-slate-400 mb-2 leading-tight">${store.address}</p>
                         
-                        <div class="space-y-1 border-t border-slate-100 pt-2 mt-2">
+                        <div class="space-y-1 border-t border-slate-700 pt-2 mt-2">
                             <div class="flex items-center justify-between">
                                 <span class="text-[10px] font-bold text-slate-400 uppercase">Distance</span>
-                                <span class="text-xs font-bold text-slate-700 flex items-center gap-1">
+                                <span class="text-xs font-bold text-slate-300 flex items-center gap-1">
                                     ${distDisplay} km
                                 </span>
                             </div>
@@ -248,15 +259,15 @@ export const LiveMap: React.FC = () => {
         
         // Update popup content
         const popupContent = `
-          <div class="p-1 font-sans text-slate-900">
-            <h3 class="font-bold text-slate-800 text-sm">${driver.driverName}</h3>
-            <div class="text-xs text-slate-600 mt-1 space-y-1">
-              <p>Status: <span class="${driver.status === 'moving' ? 'text-blue-600' : 'text-amber-600'} font-semibold uppercase">${driver.status}</span></p>
+          <div class="p-1 font-sans text-slate-100">
+            <h3 class="font-bold text-white text-sm">${driver.driverName}</h3>
+            <div class="text-xs text-slate-300 mt-1 space-y-1">
+              <p>Status: <span class="${driver.status === 'moving' ? 'text-blue-400' : 'text-amber-400'} font-semibold uppercase">${driver.status}</span></p>
               <p>Speed: ${driver.speed.toFixed(1)} km/h</p>
-              <p>Last Seen: <span class="font-semibold text-slate-800">${lastSeen}</span></p>
-              <hr class="my-1 border-slate-200"/>
+              <p>Last Seen: <span class="font-semibold text-slate-200">${lastSeen}</span></p>
+              <hr class="my-1 border-slate-700"/>
               <p class="font-medium">Next: ${driver.nextStopName || 'Assigned Route'}</p>
-              <p class="font-bold text-blue-600">ETA: ${driver.eta || 'Calculating...'}</p>
+              <p class="font-bold text-blue-400">ETA: ${driver.eta || 'Calculating...'}</p>
             </div>
           </div>
         `;
@@ -310,23 +321,23 @@ export const LiveMap: React.FC = () => {
   return (
     <div className="space-y-4 h-full flex flex-col">
        <div className="flex justify-between items-center px-1">
-          <h3 className="font-bold text-slate-800 dark:text-white text-lg flex items-center gap-2">
-            <Navigation size={20} className="text-indigo-600 dark:text-indigo-400"/> Live Fleet Tracking
+          <h3 className="font-bold text-white text-lg flex items-center gap-2">
+            <Navigation size={20} className="text-indigo-400"/> Live Fleet Tracking
           </h3>
-          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-3 py-1 rounded-full flex items-center gap-2 border border-emerald-100 dark:border-emerald-900/30">
+          <span className="text-xs font-semibold text-emerald-400 bg-emerald-900/20 px-3 py-1 rounded-full flex items-center gap-2 border border-emerald-900/30">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             Real-time
           </span>
        </div>
        
-       <div className="flex-1 relative rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-inner">
-           <div ref={mapRef} className="absolute inset-0 z-0 bg-slate-50 dark:bg-slate-900" />
+       <div className="flex-1 relative rounded-2xl overflow-hidden border border-slate-800 shadow-inner">
+           <div ref={mapRef} className="absolute inset-0 z-0 bg-slate-900" />
        </div>
        
        {/* Driver Legend / Quick List */}
        <div className="grid grid-cols-2 gap-4 pt-2 overflow-y-auto max-h-32">
           {drivers.map(d => (
-            <div key={d.driverId} className="bg-slate-50 dark:bg-slate-800/50 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-slate-200 dark:border-slate-700 hover:border-indigo-200 dark:hover:border-indigo-800 rounded-xl p-3 text-xs flex items-center justify-between cursor-pointer transition-colors"
+            <div key={d.driverId} className="bg-slate-800/50 hover:bg-indigo-900/20 border border-slate-700 hover:border-indigo-800 rounded-xl p-3 text-xs flex items-center justify-between cursor-pointer transition-colors"
               onClick={() => {
                  if(mapInstance.current) {
                     mapInstance.current.flyTo([d.lat, d.lng], 15);
@@ -337,18 +348,18 @@ export const LiveMap: React.FC = () => {
                <div className="flex items-center gap-2">
                  <div className="w-2 h-2 rounded-full bg-blue-600"></div>
                  <div>
-                    <p className="font-bold text-slate-800 dark:text-slate-200 text-sm">{d.driverName}</p>
-                    <p className="text-slate-500 dark:text-slate-400 mt-0.5">{d.status}</p>
-                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">{getTimeAgo(d.timestamp)}</p>
+                    <p className="font-bold text-slate-200 text-sm">{d.driverName}</p>
+                    <p className="text-slate-400 mt-0.5">{d.status}</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">{getTimeAgo(d.timestamp)}</p>
                  </div>
                </div>
                <div className="text-right">
-                  <p className="text-indigo-600 dark:text-indigo-400 font-bold">{d.speed.toFixed(0)} km/h</p>
+                  <p className="text-indigo-400 font-bold">{d.speed.toFixed(0)} km/h</p>
                </div>
             </div>
           ))}
           {drivers.length === 0 && (
-              <div className="col-span-2 text-center text-slate-400 dark:text-slate-500 text-xs py-2">
+              <div className="col-span-2 text-center text-slate-500 text-xs py-2">
                   Waiting for drivers to connect...
               </div>
           )}

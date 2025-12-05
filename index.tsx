@@ -28,15 +28,15 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '2rem', fontFamily: 'sans-serif', color: '#dc2626' }}>
-          <h1 style={{fontSize: '1.5rem', fontWeight: 'bold'}}>Something went wrong.</h1>
-          <p>The application crashed. Please check the console or report this error:</p>
-          <pre style={{ background: '#fef2f2', padding: '1rem', borderRadius: '0.5rem', marginTop: '1rem', overflow: 'auto' }}>
+        <div style={{ padding: '2rem', fontFamily: 'sans-serif', color: '#f87171', backgroundColor: '#020617', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <h1 style={{fontSize: '1.5rem', fontWeight: 'bold', color: '#f8fafc', marginBottom: '1rem'}}>Something went wrong.</h1>
+          <p style={{ color: '#94a3b8' }}>The application crashed. Please check the console or report this error:</p>
+          <pre style={{ background: '#1e293b', color: '#fca5a5', padding: '1.5rem', borderRadius: '0.75rem', marginTop: '1.5rem', overflow: 'auto', maxWidth: '100%', border: '1px solid #334155' }}>
             {this.state.error?.toString()}
           </pre>
           <button 
             onClick={() => window.location.reload()}
-            style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: '0.25rem', cursor: 'pointer' }}
+            style={{ marginTop: '2rem', padding: '0.75rem 1.5rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}
           >
             Reload Page
           </button>

@@ -78,14 +78,14 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onEnd }) => {
       if (ctx) {
         ctx.lineWidth = 2;
         ctx.lineCap = 'round';
-        ctx.strokeStyle = '#1e293b'; // slate-800
+        ctx.strokeStyle = '#e2e8f0'; // slate-200 for dark mode visibility
       }
     }
   }, []);
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="border-2 border-slate-200 rounded-2xl bg-white overflow-hidden touch-none relative h-40 w-full shadow-inner">
+      <div className="border-2 border-slate-700 rounded-2xl bg-slate-800 overflow-hidden touch-none relative h-40 w-full shadow-inner">
         <canvas
           ref={canvasRef}
           className="w-full h-full cursor-crosshair"
@@ -98,7 +98,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onEnd }) => {
           onTouchEnd={stopDrawing}
         />
         {!hasSignature && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-300 font-medium bg-slate-50/50">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none text-slate-500 font-medium bg-slate-800/50">
                 Sign Here
             </div>
         )}
@@ -106,7 +106,7 @@ export const SignaturePad: React.FC<SignaturePadProps> = ({ onEnd }) => {
       <button 
         type="button" 
         onClick={clear} 
-        className="text-xs font-semibold text-red-500 hover:text-red-700 self-end px-3 py-1 hover:bg-red-50 rounded-lg transition-colors"
+        className="text-xs font-semibold text-red-400 hover:text-red-300 self-end px-3 py-1 hover:bg-red-900/20 rounded-lg transition-colors"
       >
         Clear Signature
       </button>

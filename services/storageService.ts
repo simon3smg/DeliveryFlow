@@ -1,4 +1,5 @@
 
+
 import { initializeApp } from 'firebase/app';
 import { 
   getAuth, 
@@ -62,6 +63,8 @@ let driverSimulationState: Record<string, DriverLocation> = {};
 let lastKnownRealDrivers: DriverLocation[] = [];
 let lastKnownDriverIds: Set<string> = new Set(); // Cache for valid driver IDs
 let locationWatchId: number | null = null;
+let lastDbUpdateTime = 0;
+const DB_UPDATE_INTERVAL = 3000; // Update DB every 3 seconds max
 
 // Edmonton Distribution Center Coordinates
 const BASE_LAT = 53.5706;
@@ -89,8 +92,7 @@ onAuthStateChanged(auth, async (fbUser) => {
             name: fbUser.displayName || userData.name || fbUser.email?.split('@')[0] || 'User',
             email: fbUser.email || '',
             role: userData.role || 'driver',
-            avatar: userData.avatar || '',
-            darkMode: userData.darkMode
+            avatar: userData.avatar || ''
         };
         
         isAuthReady = true;
@@ -116,6 +118,46 @@ const seedProducts: Partial<Product>[] = [
   { name: 'Farm Eggs', sku: 'DAIRY-005', price: 5.00, unit: 'dozen' },
   { name: 'Spring Water', sku: 'BEV-101', price: 1.50, unit: 'bottle' },
 ];
+
+// Helper: Geocode Address
+const geocodeAddress = async (address: string): Promise<{lat: number, lng: number} | null> => {
+    try {
+        // Normalize Edmonton addresses for better Nominatim results
+        // Expands common abbreviations which can cause geocoding to fail
+        let searchAddress = address
+            .replace(/\bAve\b\.?/g, 'Avenue')
+            .replace(/\bSt\b\.?/g, 'Street')
+            .replace(/\bRd\b\.?/g, 'Road')
+            .replace(/\bBlvd\b\.?/g, 'Boulevard')
+            .replace(/\bNW\b/g, 'Northwest')
+            .replace(/\bSW\b/g, 'Southwest')
+            .replace(/\bNE\b/g, 'Northeast')
+            .replace(/\bSE\b/g, 'Southeast');
+
+        // Ensure Edmonton context
+        if (!searchAddress.toLowerCase().includes('edmonton')) {
+            searchAddress += ", Edmonton, Alberta, Canada";
+        }
+
+        const query = encodeURIComponent(searchAddress);
+        // Using a general query with limit=1. removed strict viewbox to prevent false negatives
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`;
+        
+        const response = await fetch(url, {
+             headers: { 'Accept': 'application/json' }
+        });
+        
+        if (!response.ok) return null;
+        
+        const data = await response.json();
+        if (data && data.length > 0) {
+            return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+        }
+    } catch (e) {
+        console.warn("Geocoding service failed for:", address);
+    }
+    return null;
+};
 
 export const storageService = {
   isUsingFirebase: () => true,
@@ -169,16 +211,14 @@ export const storageService = {
         name: data.name,
         email: data.email,
         role: data.role,
-        avatar: '',
-        darkMode: false
+        avatar: ''
     });
     
     const newUser: User = {
         id: fbUser.uid,
         name: data.name,
         email: data.email,
-        role: data.role,
-        darkMode: false
+        role: data.role
     };
 
     await new Promise(r => setTimeout(r, 500));
@@ -219,10 +259,6 @@ export const storageService = {
         avatar: user.avatar
     };
 
-    if (user.darkMode !== undefined) {
-        updateData.darkMode = user.darkMode;
-    }
-
     await updateDoc(userRef, updateData);
     
     if (currentUser && currentUser.id === user.id) {
@@ -258,7 +294,10 @@ export const storageService = {
         },
         (err) => {
             console.warn("Location tracking error:", err);
-            // On error, we might be offline or denied. 
+            // On catastrophic error, try to clean up
+            if (err.code === err.PERMISSION_DENIED) {
+                 storageService.stopTracking();
+            }
         },
         {
             enableHighAccuracy: true,
@@ -291,28 +330,37 @@ export const storageService = {
         status: (speed && speed > 0.5) ? 'moving' : 'stopped' as 'moving' | 'stopped'
     };
 
-    // 1. Update Local Caches immediately for responsive UI (Simulation State)
+    // 1. Update Local Caches immediately for responsive UI
+    const prevHistory = driverSimulationState[currentUser.id]?.history || [];
+    const newHistory = [...prevHistory, {lat, lng}].slice(-25); // Keep last 25 points locally
+
     driverSimulationState[currentUser.id] = {
         ...data,
         status: data.status,
-        history: driverSimulationState[currentUser.id]?.history || [],
-        eta: 'Updated just now'
+        history: newHistory,
+        eta: 'GPS Active'
     };
 
     // 2. Update Real Driver Cache (Used for map display if offline)
     const cachedIndex = lastKnownRealDrivers.findIndex(d => d.driverId === currentUser?.id);
     if (cachedIndex >= 0) {
-        lastKnownRealDrivers[cachedIndex] = { ...lastKnownRealDrivers[cachedIndex], ...data };
+        lastKnownRealDrivers[cachedIndex] = { ...lastKnownRealDrivers[cachedIndex], ...data, history: newHistory };
     } else {
-        lastKnownRealDrivers.push({ ...data, history: [] } as DriverLocation);
+        lastKnownRealDrivers.push({ ...data, history: newHistory } as DriverLocation);
     }
 
-    // 3. Update Firestore (Async, queued if offline)
-    try {
-      const locationRef = doc(db, 'driver_locations', currentUser.id);
-      await setDoc(locationRef, data, { merge: true });
-    } catch (e) {
-      console.warn("Error updating location (offline mode active):", e);
+    // 3. Update Firestore (Throttled)
+    const now = Date.now();
+    if (now - lastDbUpdateTime > DB_UPDATE_INTERVAL) {
+        try {
+          const locationRef = doc(db, 'driver_locations', currentUser.id);
+          // Note: We don't necessarily need to push history to Firestore every time if we just want current loc
+          // But to be safe for other users, we send the data.
+          await setDoc(locationRef, data, { merge: true });
+          lastDbUpdateTime = now;
+        } catch (e) {
+          console.warn("Error updating location (offline mode active):", e);
+        }
     }
   },
 
@@ -335,12 +383,30 @@ export const storageService = {
   },
   
   addStore: async (store: Omit<Store, 'id'>) => {
+    // Auto-geocode if coordinates are missing
+    if (!store.lat || !store.lng) {
+        const coords = await geocodeAddress(store.address);
+        if (coords) {
+            store.lat = coords.lat;
+            store.lng = coords.lng;
+        }
+    }
     const docRef = await addDoc(collection(db, 'stores'), store);
     return { id: docRef.id, ...store };
   },
   
   updateStore: async (store: Store) => {
     const { id, ...data } = store;
+    
+    // Auto-geocode if coordinates are missing in the update or address changed
+    if (!data.lat || !data.lng) {
+        const coords = await geocodeAddress(data.address);
+        if (coords) {
+            data.lat = coords.lat;
+            data.lng = coords.lng;
+        }
+    }
+
     await updateDoc(doc(db, 'stores', id), data);
   },
   

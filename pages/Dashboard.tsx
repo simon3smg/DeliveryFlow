@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Truck, Package, DollarSign, Store as StoreIcon, TrendingUp, TrendingDown, MoreHorizontal, Loader2, CheckCircle, AlertCircle, MapPin, ArrowRight, Navigation } from 'lucide-react';
+import { Truck, Package, DollarSign, Store as StoreIcon, TrendingUp, TrendingDown, Loader2, CheckCircle, AlertCircle, MapPin, Navigation } from 'lucide-react';
 import { storageService } from '../services/storageService';
 import { Delivery, Store } from '../types';
 import { LiveMap } from '../components/LiveMap';
@@ -154,22 +154,22 @@ export const Dashboard: React.FC = () => {
   const StatCard = ({ title, value, icon, colorClass, trend, trendDirection, onClick }: any) => (
     <div 
         onClick={onClick}
-        className={`bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 hover:shadow-lg transition-all duration-300 group relative overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
+        className={`bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-800 hover:shadow-lg transition-all duration-300 group relative overflow-hidden ${onClick ? 'cursor-pointer' : ''}`}
     >
       <div className={`absolute -right-6 -top-6 w-24 h-24 rounded-full ${colorClass} opacity-5 group-hover:scale-150 transition-transform duration-500 ease-out`}></div>
       
       <div className="relative z-10 flex justify-between items-center">
           <div>
-             <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-1">{title}</p>
-             <h3 className="text-3xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{value}</h3>
+             <p className="text-slate-400 text-sm font-medium mb-1">{title}</p>
+             <h3 className="text-3xl font-bold text-slate-100 tracking-tight">{value}</h3>
              
              {trend && (
                  <div className={`mt-2 flex items-center gap-1 text-xs font-semibold w-fit px-2 py-1 rounded-full ${
                     trendDirection === 'down' 
-                        ? 'text-red-600 bg-red-50 dark:bg-red-900/20 dark:text-red-400' 
+                        ? 'text-red-400 bg-red-900/20' 
                         : trendDirection === 'up'
-                            ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400'
-                            : 'text-slate-600 bg-slate-50 dark:bg-slate-800 dark:text-slate-300'
+                            ? 'text-emerald-400 bg-emerald-900/20'
+                            : 'text-slate-300 bg-slate-800'
                  }`}>
                     {trendDirection === 'down' ? <TrendingDown size={12} /> : <TrendingUp size={12} />} 
                     {trend}
@@ -188,7 +188,7 @@ export const Dashboard: React.FC = () => {
     <div className="space-y-8 animate-in fade-in duration-500 pb-20 md:pb-0">
       
       {/* Notification / Daily Route System */}
-      <div className="bg-slate-900 dark:bg-slate-950 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl shadow-slate-200 dark:shadow-none border border-transparent dark:border-slate-800">
+      <div className="bg-slate-950 rounded-3xl p-6 sm:p-8 text-white relative overflow-hidden shadow-xl shadow-none border border-slate-800">
          {/* Background decoration */}
          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
 
@@ -233,7 +233,7 @@ export const Dashboard: React.FC = () => {
                      {pending.map(store => (
                         <div 
                             key={store.id} 
-                            onClick={() => navigate('/deliveries', { state: { preSelectStoreId: store.id }})} 
+                            onClick={() => navigate('/deliveries', { state: { preSelectStoreId: store.id } })} 
                             className="bg-white/5 hover:bg-white/10 p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-colors border border-white/5 group active:scale-95"
                             role="button"
                             aria-label={`Start delivery for ${store.name}`}
@@ -315,27 +315,27 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         {/* Live Map */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 p-1 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 h-[500px] flex flex-col overflow-hidden transition-colors">
+        <div className="lg:col-span-2 bg-slate-900 p-1 rounded-3xl shadow-sm border border-slate-800 h-[500px] flex flex-col overflow-hidden transition-colors">
             <LiveMap />
         </div>
 
         {/* CSS Bar Chart */}
-        <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-800 flex flex-col h-[500px] transition-colors">
+        <div className="bg-slate-900 p-6 rounded-3xl shadow-sm border border-slate-800 flex flex-col h-[500px] transition-colors">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h3 className="font-bold text-lg text-slate-800 dark:text-white">Activity</h3>
+                    <h3 className="font-bold text-lg text-white">Activity</h3>
                     <p className="text-xs text-slate-400">Volume last {chartRange === 'week' ? '7' : '30'} days</p>
                 </div>
-                <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-1 gap-1">
+                <div className="flex bg-slate-800 rounded-lg p-1 gap-1">
                     <button 
                         onClick={() => setChartRange('week')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${chartRange === 'week' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${chartRange === 'week' ? 'bg-slate-700 text-indigo-400 shadow-sm' : 'text-slate-400 hover:text-slate-300'}`}
                     >
                         Week
                     </button>
                     <button 
                          onClick={() => setChartRange('month')}
-                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${chartRange === 'month' ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'}`}
+                        className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${chartRange === 'month' ? 'bg-slate-700 text-indigo-400 shadow-sm' : 'text-slate-400 hover:text-slate-300'}`}
                     >
                         Month
                     </button>
@@ -344,7 +344,7 @@ export const Dashboard: React.FC = () => {
             
             <div className="flex-1 flex gap-4 min-h-0">
                 {/* Y-Axis */}
-                <div className="flex flex-col justify-between mb-6 text-xs font-medium text-slate-400 dark:text-slate-500 text-right py-1">
+                <div className="flex flex-col justify-between mb-6 text-xs font-medium text-slate-500 text-right py-1">
                     <span>{maxCount}</span>
                     <span>{Math.round(maxCount * 0.75)}</span>
                     <span>{Math.round(maxCount * 0.5)}</span>
@@ -357,29 +357,29 @@ export const Dashboard: React.FC = () => {
                     <div className={`flex-1 relative flex items-end justify-between ${chartRange === 'week' ? 'gap-4' : 'gap-1'}`}>
                         {/* Grid Lines */}
                         <div className="absolute inset-0 flex flex-col justify-between w-full h-full pointer-events-none">
-                            <div className="border-t border-slate-100 dark:border-slate-800 w-full h-px"></div>
-                            <div className="border-t border-dashed border-slate-100 dark:border-slate-800 w-full h-px"></div>
-                            <div className="border-t border-dashed border-slate-100 dark:border-slate-800 w-full h-px"></div>
-                            <div className="border-t border-dashed border-slate-100 dark:border-slate-800 w-full h-px"></div>
-                            <div className="border-t border-slate-200 dark:border-slate-700 w-full h-px"></div>
+                            <div className="border-t border-slate-800 w-full h-px"></div>
+                            <div className="border-t border-dashed border-slate-800 w-full h-px"></div>
+                            <div className="border-t border-dashed border-slate-800 w-full h-px"></div>
+                            <div className="border-t border-dashed border-slate-800 w-full h-px"></div>
+                            <div className="border-t border-slate-700 w-full h-px"></div>
                         </div>
 
                         {/* Bars */}
                         {chartData.map((data, index) => (
                             <div key={index} className="relative flex-1 h-full flex items-end justify-center group">
                                 <div 
-                                    className={`w-full bg-indigo-500 group-hover:bg-indigo-600 dark:bg-indigo-600 dark:group-hover:bg-indigo-500 transition-all duration-500 rounded-t-sm relative flex justify-center ${chartRange === 'month' ? 'min-w-[2px]' : 'min-w-[12px] rounded-t-lg'}`}
+                                    className={`w-full bg-indigo-500 group-hover:bg-indigo-400 transition-all duration-500 rounded-t-sm relative flex justify-center ${chartRange === 'month' ? 'min-w-[2px]' : 'min-w-[12px] rounded-t-lg'}`}
                                     style={{ height: `${maxCount > 0 ? (data.count / maxCount) * 100 : 0}%`, minHeight: data.count > 0 ? '4px' : '0' }}
                                 >
                                     {/* Value Label (Week View) - Always visible */}
                                     {chartRange === 'week' && data.count > 0 && (
-                                        <span className="absolute -top-6 text-xs font-bold text-slate-600 dark:text-slate-400 animate-in slide-in-from-bottom-1 fade-in">
+                                        <span className="absolute -top-6 text-xs font-bold text-slate-400 animate-in slide-in-from-bottom-1 fade-in">
                                             {data.count}
                                         </span>
                                     )}
 
                                     {/* Tooltip */}
-                                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-800 dark:bg-slate-700 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all z-20 whitespace-nowrap shadow-xl pointer-events-none">
+                                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-700 text-white text-[10px] font-bold px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-all z-20 whitespace-nowrap shadow-xl pointer-events-none">
                                         {data.count} deliveries<br/><span className="text-slate-400 font-normal">{data.fullDate}</span>
                                     </div>
                                 </div>
@@ -391,7 +391,7 @@ export const Dashboard: React.FC = () => {
                     <div className={`flex justify-between mt-3 ${chartRange === 'week' ? 'gap-4' : 'gap-1'}`}>
                         {chartData.map((data, index) => (
                             <div key={index} className="flex-1 text-center">
-                                <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 truncate block">
+                                <span className="text-[10px] font-bold text-slate-500 truncate block">
                                     {chartRange === 'week' ? data.label : (index % 5 === 0 ? data.label.split(' ')[1] : '')}
                                 </span>
                             </div>

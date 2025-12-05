@@ -1,5 +1,7 @@
+
+
 import React, { useEffect, useState } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Truck, 
@@ -23,18 +25,14 @@ interface LayoutProps {
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   const [isOnline, setIsOnline] = useState(false);
-  const location = useLocation();
+  
   const navigate = useNavigate();
+  const location = useLocation();
 
-  // Check Dark Mode Preference on Mount
+  // Enforce Dark Mode
   useEffect(() => {
-    // Initial check from local storage to avoid flash
-    const isDark = localStorage.getItem('darkMode') === 'true';
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    document.documentElement.classList.add('dark');
+    localStorage.setItem('darkMode', 'true');
   }, []);
 
   // Check Auth & Connection Status
@@ -53,17 +51,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             storageService.startTracking();
         } else {
             storageService.stopTracking();
-        }
-        
-        // Sync Dark Mode from User Profile
-        if (user && typeof user.darkMode === 'boolean') {
-             if (user.darkMode) {
-                 document.documentElement.classList.add('dark');
-                 localStorage.setItem('darkMode', 'true');
-             } else {
-                 document.documentElement.classList.remove('dark');
-                 localStorage.setItem('darkMode', 'false');
-             }
         }
     });
     return () => {
@@ -96,8 +83,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     return item ? item.label : 'Dashboard';
   };
 
+  const isPathActive = (path: string) => location.pathname === path;
+
   return (
-    <div className="w-full min-h-screen flex bg-slate-50 dark:bg-slate-950 transition-colors duration-300 font-sans">
+    <div className="w-full min-h-screen flex bg-slate-950 text-slate-100 font-sans transition-colors duration-300">
       
       {/* Desktop Sidebar */}
       <aside 
@@ -122,29 +111,45 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Navigation */}
         <nav className="flex-1 px-4 space-y-1">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => `
-                flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group
-                ${isActive 
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' 
-                  : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
-              `}
-            >
-              {item.icon}
-              <span className="font-medium">{item.label}</span>
-            </NavLink>
-          ))}
+          {navItems.map((item) => {
+            const isActive = isPathActive(item.path);
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`
+                  flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all duration-200 group
+                  ${isActive 
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/20' 
+                    : 'text-slate-400 hover:bg-slate-800 hover:text-white'}
+                `}
+              >
+                {item.icon}
+                <span className="font-medium">{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
 
         {/* User Profile Footer */}
         <div className="p-4 border-t border-slate-800 space-y-4">
            {/* Connection Status Badge */}
-           <div className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 ${isOnline ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-               {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
-               <span>{isOnline ? 'Cloud Connected' : 'Offline / Local'}</span>
+           <div className="flex flex-col gap-2">
+               <div className={`px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 ${isOnline ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                   {isOnline ? <Wifi size={14} /> : <WifiOff size={14} />}
+                   <span>{isOnline ? 'Cloud Connected' : 'Offline / Local'}</span>
+               </div>
+               
+               {/* New GPS Badge for Drivers */}
+               {currentUser?.role === 'driver' && (
+                   <div className="px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                       <span className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
+                       </span>
+                       <span>GPS Tracking Active</span>
+                   </div>
+               )}
            </div>
 
            <div 
@@ -181,30 +186,38 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden relative">
         
         {/* Mobile Header - Simplified */}
-        <div className="md:hidden bg-white/90 backdrop-blur-md dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 px-4 py-3 flex justify-between items-center no-print sticky top-0 z-30">
+        <div className="md:hidden bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex justify-between items-center no-print sticky top-0 z-30">
           <div className="flex items-center gap-2">
              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md shadow-indigo-500/30">
                 <Truck className="text-white" size={16} /> 
              </div>
-             <h1 className="font-bold text-lg text-slate-800 dark:text-white tracking-tight">{getPageTitle()}</h1>
+             <h1 className="font-bold text-lg text-white tracking-tight">{getPageTitle()}</h1>
           </div>
-          <div 
-            className="w-9 h-9 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-indigo-300 flex items-center justify-center font-bold text-xs overflow-hidden cursor-pointer shadow-sm active:scale-95 transition-transform"
-            onClick={() => navigate('/settings')}
-          >
-            {currentUser?.avatar ? (
-              <img src={currentUser.avatar} alt="User" className="w-full h-full object-cover" />
-            ) : (
-              currentUser?.name?.charAt(0) || <User size={16}/>
+          <div className="flex items-center gap-3">
+            {currentUser?.role === 'driver' && (
+               <div className="relative flex h-2.5 w-2.5" title="GPS Active">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
+               </div>
             )}
+            <div 
+                className="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 text-indigo-300 flex items-center justify-center font-bold text-xs overflow-hidden cursor-pointer shadow-sm active:scale-95 transition-transform"
+                onClick={() => navigate('/settings')}
+            >
+                {currentUser?.avatar ? (
+                <img src={currentUser.avatar} alt="User" className="w-full h-full object-cover" />
+                ) : (
+                currentUser?.name?.charAt(0) || <User size={16}/>
+                )}
+            </div>
           </div>
         </div>
 
         {/* Desktop Header */}
-        <header className="hidden md:flex bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/60 dark:border-slate-800 sticky top-0 z-20 px-8 py-4 justify-between items-center no-print transition-colors duration-300">
+        <header className="hidden md:flex bg-slate-900/80 backdrop-blur-md border-b border-slate-800 sticky top-0 z-20 px-8 py-4 justify-between items-center no-print transition-colors duration-300">
             <div>
-               <h2 className="text-2xl font-bold text-slate-800 dark:text-white">{getPageTitle()}</h2>
-               <p className="text-sm text-slate-500 dark:text-slate-400">Overview of your activity</p>
+               <h2 className="text-2xl font-bold text-white">{getPageTitle()}</h2>
+               <p className="text-sm text-slate-400">Overview of your activity</p>
             </div>
 
             <div className="flex items-center gap-6">
@@ -213,12 +226,12 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                    <input 
                       type="text" 
                       placeholder="Search..." 
-                      className="pl-10 pr-4 py-2 rounded-full bg-slate-100 dark:bg-slate-800 dark:text-white border-none text-sm focus:ring-2 focus:ring-indigo-500 w-64 md:w-80 lg:w-96 xl:w-[28rem] transition-all"
+                      className="pl-10 pr-4 py-2 rounded-full bg-slate-800 text-white border-none text-sm focus:ring-2 focus:ring-indigo-500 w-64 md:w-80 lg:w-96 xl:w-[28rem] transition-all"
                    />
                 </div>
-                <button className="relative p-2 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                <button className="relative p-2 text-slate-400 hover:text-indigo-400 transition-colors">
                    <Bell size={20} />
-                   <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900"></span>
+                   <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-slate-900"></span>
                 </button>
             </div>
         </header>
@@ -232,28 +245,27 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </main>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 flex justify-around items-center px-2 py-2 pb-safe z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-           {navItems.map((item) => (
-             <NavLink
-               key={item.path}
-               to={item.path}
-               className={({ isActive }) => `
-                 flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-all w-16
-                 ${isActive 
-                   ? 'text-indigo-600 dark:text-indigo-400 font-bold' 
-                   : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}
-               `}
-             >
-               {({ isActive }) => (
-                 <>
-                   <div className={isActive ? "transform scale-110 transition-transform" : ""}>
+        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900 border-t border-slate-800 flex justify-around items-center px-2 py-2 pb-safe z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+           {navItems.map((item) => {
+             const isActive = isPathActive(item.path);
+             return (
+               <Link
+                 key={item.path}
+                 to={item.path}
+                 className={`
+                   flex flex-col items-center justify-center gap-1 p-2 rounded-xl transition-all w-16
+                   ${isActive 
+                     ? 'text-indigo-400 font-bold' 
+                     : 'text-slate-400 hover:text-slate-300'}
+                 `}
+               >
+                  <div className={isActive ? "transform scale-110 transition-transform" : ""}>
                      {item.icon}
                    </div>
                    <span className="text-[10px] font-medium tracking-tight truncate w-full text-center">{item.label}</span>
-                 </>
-               )}
-             </NavLink>
-           ))}
+               </Link>
+             );
+           })}
         </nav>
 
       </div>
