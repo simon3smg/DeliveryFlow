@@ -66,9 +66,12 @@ let locationWatchId: number | null = null;
 let lastDbUpdateTime = 0;
 const DB_UPDATE_INTERVAL = 3000; // Update DB every 3 seconds max
 
+// Wake Lock State
+let wakeLock: any = null;
+
 // Edmonton Distribution Center Coordinates
-const BASE_LAT = 53.5706;
-const BASE_LNG = -113.4682;
+const BASE_LAT = 53.57057;
+const BASE_LNG = -113.46816;
 
 const notifySubscribers = (user: User | null) => {
     currentUser = user;
@@ -107,7 +110,7 @@ const mapDoc = <T>(doc: any): T => ({ id: doc.id, ...doc.data() } as T);
 
 // Seed Data - Updated to Edmonton
 const seedStores: Partial<Store>[] = [
-  { name: 'Edmonton Distribution Ctr', address: '8612 118 Ave NW, Edmonton', contactPerson: 'Manager', phone: '780-555-0100', email: 'dist@edmonton.com', lat: 53.5706, lng: -113.4682, paymentMethod: 'credit', sequence: 1 },
+  { name: 'Edmonton Distribution Ctr', address: '8612 118 Ave NW, Edmonton', contactPerson: 'Manager', phone: '780-555-0100', email: 'dist@edmonton.com', lat: 53.57057, lng: -113.46816, paymentMethod: 'credit', sequence: 1 },
   { name: 'Downtown Market', address: '10200 102 Ave NW, Edmonton', contactPerson: 'John Doe', phone: '780-555-0101', email: 'john@market.com', lat: 53.5437, lng: -113.4975, paymentMethod: 'cash', sequence: 2 },
   { name: 'West Edmonton Mall Store', address: '8882 170 St NW, Edmonton', contactPerson: 'Jane Smith', phone: '780-555-0102', email: 'jane@wem.com', lat: 53.5225, lng: -113.6242, paymentMethod: 'credit', sequence: 3 },
 ];
@@ -157,6 +160,27 @@ const geocodeAddress = async (address: string): Promise<{lat: number, lng: numbe
         console.warn("Geocoding service failed for:", address);
     }
     return null;
+};
+
+// Internal helper to request wake lock
+const requestWakeLock = async () => {
+    // Only attempt if supported and not already active
+    if ('wakeLock' in navigator && !wakeLock) {
+        try {
+            wakeLock = await (navigator as any).wakeLock.request('screen');
+            console.log("Wake Lock active: Screen will stay on to track location.");
+            wakeLock.addEventListener('release', () => {
+                console.log('Wake Lock was released');
+                wakeLock = null;
+            });
+        } catch (err: any) {
+            // We swallow the error here to prevent console spam
+            // The UI will retry on user interaction
+            if (err.name !== 'NotAllowedError') {
+                 console.warn("Wake Lock error:", err);
+            }
+        }
+    }
 };
 
 export const storageService = {
@@ -276,7 +300,7 @@ export const storageService = {
   },
 
   // --- LOCATION TRACKING ---
-  startTracking: () => {
+  startTracking: async () => {
     if (!navigator.geolocation) {
         console.warn("Geolocation not supported");
         return;
@@ -284,6 +308,10 @@ export const storageService = {
     
     // Clear existing watch if any
     if (locationWatchId !== null) return;
+
+    // --- WAKE LOCK START ---
+    // Attempt request. If it fails due to lack of gesture, ensureWakeLock will handle it later.
+    await requestWakeLock();
 
     console.log("Starting location tracking...");
     locationWatchId = navigator.geolocation.watchPosition(
@@ -302,16 +330,34 @@ export const storageService = {
         {
             enableHighAccuracy: true,
             maximumAge: 0,
-            timeout: 10000
+            timeout: 15000 // Increased timeout for better stability
         }
     );
   },
+
+  // Public method to be called on user interaction
+  ensureWakeLock: async () => {
+    if (!wakeLock && locationWatchId !== null) {
+        await requestWakeLock();
+    }
+  },
+  
+  isWakeLockActive: () => !!wakeLock,
 
   stopTracking: () => {
     if (locationWatchId !== null) {
         console.log("Stopping location tracking...");
         navigator.geolocation.clearWatch(locationWatchId);
         locationWatchId = null;
+    }
+    // Release Wake Lock
+    if (wakeLock) {
+        wakeLock.release()
+            .then(() => {
+                wakeLock = null;
+                console.log("Wake Lock released");
+            })
+            .catch((e: any) => console.log("Error releasing wake lock", e));
     }
   },
 
@@ -574,3 +620,12 @@ export const storageService = {
 
   syncLocalData: async () => {}
 };
+
+// Global Listener for visibility change to re-acquire wake lock if needed
+if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', async () => {
+        if (document.visibilityState === 'visible' && locationWatchId !== null) {
+            await storageService.ensureWakeLock();
+        }
+    });
+}

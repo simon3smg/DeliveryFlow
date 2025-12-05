@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Calendar, Printer, Loader2, Package, DollarSign, Banknote, CreditCard, FileText, X, Truck, ArrowLeft, History, TrendingUp } from 'lucide-react';
 import { storageService } from '../services/storageService';
@@ -9,7 +10,7 @@ type Timeframe = 'daily' | 'monthly' | 'yearly';
 
 const COMPANY_INFO = {
     name: "Family Injera & Catering Ltd.",
-    address: ["8612 118 Avenue Northwest", "Edmonton, Alberta T5B 0S8", "Canada"],
+    address: ["8612 118 Ave NW", "Edmonton, Alberta T5B 0S8", "Canada"],
     phone: "7807520907",
     mobile: "5879747592",
     email: "familyinjera118ave@gmail.com"

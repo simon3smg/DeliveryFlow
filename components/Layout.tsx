@@ -59,6 +59,30 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     };
   }, []); 
 
+  // New: Wake Lock Interaction Listener
+  // Browsers often block automatic Wake Lock requests on load.
+  // This waits for the first user click/touch to request it safely.
+  useEffect(() => {
+    const attemptWakeLock = async () => {
+        if (currentUser?.role === 'driver' && !storageService.isWakeLockActive()) {
+            await storageService.ensureWakeLock();
+        }
+    };
+
+    const handleInteraction = () => {
+        attemptWakeLock();
+        // We keep the listener active just in case the lock is lost or failed first time
+    };
+
+    window.addEventListener('click', handleInteraction);
+    window.addEventListener('touchstart', handleInteraction);
+
+    return () => {
+        window.removeEventListener('click', handleInteraction);
+        window.removeEventListener('touchstart', handleInteraction);
+    };
+  }, [currentUser]);
+
   // If we are on login/register pages, don't show the main layout
   if (location.pathname === '/login' || location.pathname === '/register') {
       return <>{children}</>;
@@ -147,7 +171,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
                        </span>
-                       <span>GPS Tracking Active</span>
+                       <span>GPS Active / Screen Awake</span>
                    </div>
                )}
            </div>
@@ -195,7 +219,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
           <div className="flex items-center gap-3">
             {currentUser?.role === 'driver' && (
-               <div className="relative flex h-2.5 w-2.5" title="GPS Active">
+               <div className="relative flex h-2.5 w-2.5" title="GPS Active / High Performance Mode">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span>
                </div>

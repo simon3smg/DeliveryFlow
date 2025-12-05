@@ -8,9 +8,9 @@ import { Navigation } from 'lucide-react';
 declare const L: any;
 
 const FACTORY_LOCATION = {
-  lat: 53.5706,
-  lng: -113.4682,
-  address: "8612 118th Avenue Northwest, Edmonton, Alberta, Canada",
+  lat: 53.57057,
+  lng: -113.46816,
+  address: "8612 118 Ave NW, Edmonton",
   name: "Factory"
 };
 
